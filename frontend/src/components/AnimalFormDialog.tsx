@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Animal, AnimalFormData, AnimalType } from "../types/animal";
+import { Animal, AnimalFormData } from "../types/animal";
 import { Button } from "./ui/button";
 import {
   Dialog,
@@ -30,11 +30,11 @@ import {
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  tagNumber: z.string().min(1, "Tag number is required"),
+  tag_number: z.string().min(1, "Tag number is required"),
   age: z.coerce.number().min(0, "Age must be a positive number"),
   gender: z.enum(["Male", "Female"]),
   type: z.enum(["Cow", "Goat", "Hen"]),
-  lastPregnancyDate: z.string().optional(),
+  last_pregnancy: z.string().optional(),
 });
 
 interface AnimalFormDialogProps {
@@ -56,11 +56,11 @@ export function AnimalFormDialog({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
-      tagNumber: "",
+      tag_number: "",
       age: 0,
       gender: "Male",
       type: "Cow",
-      lastPregnancyDate: "",
+      last_pregnancy: "",
     },
   });
 
@@ -70,20 +70,20 @@ export function AnimalFormDialog({
     if (animal) {
       form.reset({
         name: animal.name,
-        tagNumber: animal.tagNumber,
+        tag_number: animal.tag_number,
         age: animal.age,
         gender: animal.gender,
         type: animal.type,
-        lastPregnancyDate: animal.lastPregnancyDate || "",
+        last_pregnancy: animal.last_pregnancy || "",
       });
     } else {
       form.reset({
         name: "",
-        tagNumber: "",
+        tag_number: "",
         age: 0,
         gender: "Male",
         type: "Cow",
-        lastPregnancyDate: "",
+        last_pregnancy: "",
       });
     }
   }, [animal, form]);
@@ -115,7 +115,7 @@ export function AnimalFormDialog({
             />
             <FormField
               control={form.control}
-              name="tagNumber"
+              name="tag_number"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tag Number</FormLabel>
@@ -166,7 +166,7 @@ export function AnimalFormDialog({
             {gender === "Female" && (
               <FormField
                 control={form.control}
-                name="lastPregnancyDate"
+                name="last_pregnancy"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Last Pregnancy Date</FormLabel>

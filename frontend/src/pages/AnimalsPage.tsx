@@ -24,6 +24,23 @@ import {
   AlertDialogTitle,
 } from "../components/ui/alert-dialog";
 
+// Helper function to group animals by type
+const groupAnimalsByType = (animals: Animal[]) => {
+  const grouped: Record<AnimalType, Animal[]> = {
+    Cow: [],
+    Goat: [],
+    Hen: []
+  };
+
+  animals.forEach(animal => {
+    if (animal.type in grouped) {
+      grouped[animal.type as AnimalType].push(animal);
+    }
+  });
+
+  return grouped;
+};
+
 export function AnimalsPage() {
   const [animals, setAnimals] = useState<Animal[]>([]);
   const [filteredAnimals, setFilteredAnimals] = useState<Animal[]>([]);
@@ -67,7 +84,7 @@ export function AnimalsPage() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(animal => 
-        animal.tagNumber.toLowerCase().includes(query)
+        animal.tag_number.toLowerCase().includes(query)
       );
     }
     
@@ -93,8 +110,8 @@ export function AnimalsPage() {
     if (!animalToDelete) return;
     
     try {
-      await animalApi.delete(animalToDelete._id);
-      setAnimals(prev => prev.filter(animal => animal._id !== animalToDelete._id));
+      await animalApi.delete(animalToDelete.id.toString());
+      setAnimals(prev => prev.filter(animal => animal.id !== animalToDelete.id));
       toast.success("Animal deleted successfully");
     } catch (error) {
       console.error("Error deleting animal:", error);
@@ -109,10 +126,10 @@ export function AnimalsPage() {
     try {
       if (editingAnimal) {
         // Update existing animal
-        const updatedAnimal = await animalApi.update(editingAnimal._id, data);
+        const updatedAnimal = await animalApi.update(editingAnimal.id.toString(), data);
         setAnimals(prev => 
           prev.map(animal => 
-            animal._id === editingAnimal._id ? updatedAnimal : animal
+            animal.id === editingAnimal.id ? updatedAnimal : animal
           )
         );
         toast.success("Animal updated successfully");
@@ -127,6 +144,34 @@ export function AnimalsPage() {
       console.error("Error saving animal:", error);
       toast.error("Failed to save animal");
     }
+  };
+
+  // Render animal cards grouped by type
+  const renderAnimalGroups = () => {
+    const groupedAnimals = groupAnimalsByType(filteredAnimals);
+    const animalTypes: AnimalType[] = ["Cow", "Goat", "Hen"];
+
+    return animalTypes.map(type => {
+      const animalsOfType = groupedAnimals[type];
+      if (selectedType !== "all" && selectedType !== type) return null;
+      if (animalsOfType.length === 0) return null;
+
+      return (
+        <div key={type} className="space-y-4">
+          <h2 className="text-2xl font-semibold">{type}s</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {animalsOfType.map(animal => (
+              <AnimalCard 
+                key={animal.id} 
+                animal={animal} 
+                onEdit={handleEditAnimal}
+                onDelete={handleDeleteClick}
+              />
+            ))}
+          </div>
+        </div>
+      );
+    });
   };
 
   return (
@@ -172,15 +217,8 @@ export function AnimalsPage() {
           <p className="text-muted-foreground">No animals found.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {filteredAnimals.map(animal => (
-            <AnimalCard 
-              key={animal._id} 
-              animal={animal} 
-              onEdit={handleEditAnimal}
-              onDelete={handleDeleteClick}
-            />
-          ))}
+        <div className="space-y-8">
+          {renderAnimalGroups()}
         </div>
       )}
       

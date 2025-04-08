@@ -26,15 +26,15 @@ api.interceptors.request.use(
 // Helper function to transform API data to frontend format
 const transformApiToFrontend = (apiData: any): Animal => {
   return {
-    _id: apiData.id,
+    id: apiData.id,
     name: apiData.name,
-    tagNumber: apiData.tag_number,
+    tag_number: apiData.tag_number,
     age: apiData.age,
     gender: apiData.gender,
     type: apiData.type,
-    lastPregnancyDate: apiData.last_pregnancy,
-    createdAt: apiData.created_at,
-    updatedAt: apiData.updated_at
+    last_pregnancy: apiData.last_pregnancy,
+    created_at: apiData.created_at,
+    updated_at: apiData.updated_at
   };
 };
 
@@ -42,11 +42,11 @@ const transformApiToFrontend = (apiData: any): Animal => {
 const transformFrontendToApi = (frontendData: AnimalFormData): any => {
   return {
     name: frontendData.name,
-    tag_number: frontendData.tagNumber,
+    tag_number: frontendData.tag_number,
     age: Number(frontendData.age),
     gender: frontendData.gender,
     type: frontendData.type,
-    last_pregnancy: frontendData.lastPregnancyDate || null
+    last_pregnancy: frontendData.last_pregnancy || null
   };
 };
 

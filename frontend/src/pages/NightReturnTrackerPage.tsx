@@ -55,17 +55,33 @@ export function NightReturnTrackerPage() {
       .map(log => log.animal_id);
     
     // Return all animals that don't have a return log with returned=true for this date
-    return animals.filter(animal => !returnedAnimalIds.includes(Number(animal._id)));
+    return animals.filter(animal => !returnedAnimalIds.includes(Number(animal.id)));
   };
 
-  // Group missing animals by type
-  const missingAnimalsByType = getMissingAnimals().reduce((acc, animal) => {
-    if (!acc[animal.type]) {
-      acc[animal.type] = [];
-    }
-    acc[animal.type].push(animal);
-    return acc;
-  }, {} as Record<string, Animal[]>);
+  // Get animals that have returned for the selected date
+  const getReturnedAnimals = () => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    const returnedAnimalIds = returnLogs
+      .filter(log => log.date === dateStr && log.returned === true)
+      .map(log => log.animal_id);
+    
+    return animals.filter(animal => returnedAnimalIds.includes(Number(animal.id)));
+  };
+
+  // Group animals by type
+  const groupAnimalsByType = (animalList: Animal[]) => {
+    return animalList.reduce((acc, animal) => {
+      if (!acc[animal.type]) {
+        acc[animal.type] = [];
+      }
+      acc[animal.type].push(animal);
+      return acc;
+    }, {} as Record<string, Animal[]>);
+  };
+
+  // Get both missing and returned animals grouped by type
+  const missingAnimalsByType = groupAnimalsByType(getMissingAnimals());
+  const returnedAnimalsByType = groupAnimalsByType(getReturnedAnimals());
 
   // Handle marking an animal as returned
   const handleMarkAsReturned = async () => {
@@ -75,7 +91,7 @@ export function NightReturnTrackerPage() {
     }
 
     try {
-      const animal = animals.find(a => a.tagNumber.toLowerCase() === tagId.toLowerCase());
+      const animal = animals.find(a => a.tag_number.toLowerCase() === tagId.toLowerCase());
       if (!animal) {
         toast.error("Animal not found");
         return;
@@ -83,7 +99,7 @@ export function NightReturnTrackerPage() {
 
       const dateStr = format(date, "yyyy-MM-dd");
       const existingLog = returnLogs.find(
-        log => log.animal_id === Number(animal._id) && log.date === dateStr
+        log => log.animal_id === Number(animal.id) && log.date === dateStr
       );
 
       if (existingLog) {
@@ -97,7 +113,7 @@ export function NightReturnTrackerPage() {
       } else {
         // Create new log
         const newLog = await returnLogApi.create({
-          animal_id: Number(animal._id),
+          animal_id: Number(animal.id),
           date: dateStr,
           returned: true
         });
@@ -111,9 +127,6 @@ export function NightReturnTrackerPage() {
       toast.error("Failed to mark animal as returned");
     }
   };
-
-  // Check if all animals have returned
-  const allAnimalsReturned = getMissingAnimals().length === 0;
 
   return (
     <div className="space-y-6">
@@ -145,18 +158,18 @@ export function NightReturnTrackerPage() {
         </div>
       </div>
 
-      {/* Missing Animals Summary */}
+      {/* Animals Summary */}
       <div className="flex flex-wrap gap-2">
         {Object.entries(missingAnimalsByType).map(([type, animals]) => (
           <Badge key={type} variant="outline" className="bg-red-50 text-red-700 border-red-200">
             {type}s: {animals.length} missing
           </Badge>
         ))}
-        {allAnimalsReturned && (
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-            All animals have returned
+        {Object.entries(returnedAnimalsByType).map(([type, animals]) => (
+          <Badge key={type} variant="outline" className="bg-green-50 text-green-700 border-green-200">
+            {type}s: {animals.length} returned
           </Badge>
-        )}
+        ))}
       </div>
 
       {/* Animal Return Logging Section */}
@@ -187,58 +200,98 @@ export function NightReturnTrackerPage() {
         </CardContent>
       </Card>
 
-      {/* Missing Animals Section */}
+      {/* Animals Status Section */}
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
           <p className="text-muted-foreground">Loading data...</p>
         </div>
-      ) : allAnimalsReturned ? (
-        <Card className="bg-green-50 border-green-200">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-center gap-2 text-green-700">
-              <CheckCircle className="h-5 w-5" />
-              <p className="font-medium">All animals have returned for {formattedDate}</p>
-            </div>
-          </CardContent>
-        </Card>
+      ) : animals.length === 0 ? (
+        <div className="rounded-lg border p-8 text-center">
+          <p className="text-muted-foreground">No animals found.</p>
+        </div>
       ) : (
-        <div className="space-y-6">
-          {Object.entries(missingAnimalsByType).map(([type, animals]) => (
-            <div key={type} className="space-y-4">
-              <h2 className="text-xl font-semibold">{type}s</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {animals.map(animal => (
-                  <Card 
-                    key={animal._id} 
-                    className="border-red-400 hover:scale-105 transition-transform duration-200"
-                  >
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">{animal.name}</CardTitle>
-                      <CardDescription>{animal.tagNumber}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="pb-2">
-                      <div className="space-y-1 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Gender:</span>
-                          <span>{animal.gender}</span>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Not Returned Animals */}
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-red-600">Not Returned</h2>
+            {Object.entries(missingAnimalsByType).map(([type, animals]) => (
+              <div key={type} className="space-y-4">
+                <h3 className="text-xl font-semibold">{type}s</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {animals.map(animal => (
+                    <Card 
+                      key={animal.id} 
+                      className="border-red-400 hover:scale-105 transition-transform duration-200"
+                    >
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-lg">{animal.name}</CardTitle>
+                        <CardDescription>{animal.tag_number}</CardDescription>
+                      </CardHeader>
+                      <CardContent className="pb-2">
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Gender:</span>
+                            <span>{animal.gender}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Age:</span>
+                            <span>{animal.age} years</span>
+                          </div>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Age:</span>
-                          <span>{animal.age} years</span>
+                      </CardContent>
+                      <CardFooter className="pt-0">
+                        <div className="flex items-center gap-1 text-red-500 text-sm">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>Not returned</span>
                         </div>
-                      </div>
-                    </CardContent>
-                    <CardFooter className="pt-0">
-                      <div className="flex items-center gap-1 text-red-500 text-sm">
-                        <AlertCircle className="h-4 w-4" />
-                        <span>Not returned</span>
-                      </div>
-                    </CardFooter>
-                  </Card>
-                ))}
+                      </CardFooter>
+                    </Card>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+
+          {/* Returned Animals */}
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-green-600">Returned</h2>
+            {Object.entries(returnedAnimalsByType).map(([type, animals]) => (
+              <div key={type} className="space-y-4">
+                <h3 className="text-xl font-semibold">{type}s</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {animals.map(animal => (
+                    <Card 
+                      key={animal.id} 
+                      className="border-green-400 hover:scale-105 transition-transform duration-200"
+                    >
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-lg">{animal.name}</CardTitle>
+                        <CardDescription>{animal.tag_number}</CardDescription>
+                      </CardHeader>
+                      <CardContent className="pb-2">
+                        <div className="space-y-1 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Gender:</span>
+                            <span>{animal.gender}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Age:</span>
+                            <span>{animal.age} years</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                      <CardFooter className="pt-0">
+                        <div className="flex items-center gap-1 text-green-500 text-sm">
+                          <CheckCircle className="h-4 w-4" />
+                          <span>Returned</span>
+                        </div>
+                      </CardFooter>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

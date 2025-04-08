@@ -6,6 +6,7 @@ import { LogOut } from "lucide-react"
 const navItems = [
   { name: "Dashboard", path: "/dashboard" },
   { name: "Animals", path: "/animals" },
+  { name: "Yields", path: "/yields" },
   { name: "Night Returns", path: "/night-returns" },
 ]
 

@@ -16,7 +16,7 @@ export function AnimalCard({ animal, onEdit, onDelete }: AnimalCardProps) {
         <CardTitle className="flex items-center justify-between">
           <span>{animal.name}</span>
           <span className="text-sm font-normal text-muted-foreground">
-            {animal.tagNumber}
+            {animal.tag_number}
           </span>
         </CardTitle>
       </CardHeader>
@@ -34,10 +34,10 @@ export function AnimalCard({ animal, onEdit, onDelete }: AnimalCardProps) {
             <span className="text-muted-foreground">Gender:</span>
             <span>{animal.gender}</span>
           </div>
-          {animal.gender === "Female" && animal.lastPregnancyDate && (
+          {animal.gender === "Female" && animal.last_pregnancy && (
             <div className="flex justify-between">
               <span className="text-muted-foreground">Last Pregnancy:</span>
-              <span>{new Date(animal.lastPregnancyDate).toLocaleDateString()}</span>
+              <span>{new Date(animal.last_pregnancy).toLocaleDateString()}</span>
             </div>
           )}
         </div>

@@ -1,22 +1,22 @@
 export type AnimalType = 'Cow' | 'Goat' | 'Hen';
 
 export interface Animal {
-  _id: string;
+  id: number;
   name: string;
-  tagNumber: string;
+  tag_number: string;
   age: number;
   gender: 'Male' | 'Female';
   type: AnimalType;
-  lastPregnancyDate?: string;
-  createdAt: string;
-  updatedAt: string;
+  last_pregnancy: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AnimalFormData {
   name: string;
-  tagNumber: string;
+  tag_number: string;
   age: number;
   gender: 'Male' | 'Female';
   type: AnimalType;
-  lastPregnancyDate?: string;
+  last_pregnancy?: string;
 }
