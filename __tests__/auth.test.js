@@ -41,8 +41,8 @@ describe('Auth API', () => {
   const testUser = {
     email: 'test@example.com',
     password: 'password123',
-    firstName: 'Test',
-    lastName: 'User'
+    name: 'Test User',
+    role: 'user'
   };
 
   describe('POST /api/auth/register', () => {
@@ -54,8 +54,8 @@ describe('Auth API', () => {
       expect(response.statusCode).toBe(201);
       expect(response.body).toHaveProperty('token');
       expect(response.body.user).toHaveProperty('email', testUser.email);
-      expect(response.body.user).toHaveProperty('firstName', testUser.firstName);
-      expect(response.body.user).toHaveProperty('lastName', testUser.lastName);
+      expect(response.body.user).toHaveProperty('name', testUser.name);
+      expect(response.body.user).toHaveProperty('role', testUser.role);
       expect(response.body.user).not.toHaveProperty('password');
     });
 
@@ -92,6 +92,8 @@ describe('Auth API', () => {
       expect(response.statusCode).toBe(200);
       expect(response.body).toHaveProperty('token');
       expect(response.body.user).toHaveProperty('email', testUser.email);
+      expect(response.body.user).toHaveProperty('name', testUser.name);
+      expect(response.body.user).toHaveProperty('role', testUser.role);
     });
 
     test('should not login with invalid password', async () => {
@@ -125,8 +127,8 @@ describe('Auth API', () => {
 
       expect(response.statusCode).toBe(200);
       expect(response.body).toHaveProperty('email', testUser.email);
-      expect(response.body).toHaveProperty('firstName', testUser.firstName);
-      expect(response.body).toHaveProperty('lastName', testUser.lastName);
+      expect(response.body).toHaveProperty('name', testUser.name);
+      expect(response.body).toHaveProperty('role', testUser.role);
     });
 
     test('should not get profile without token', async () => {

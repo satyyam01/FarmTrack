@@ -1,4 +1,5 @@
 const { ReturnLog, Animal } = require('../models');
+const { Op } = require('sequelize');
 
 // Get all return logs
 exports.getAllReturnLogs = async (req, res) => {
@@ -25,29 +26,79 @@ exports.getReturnLogsByAnimal = async (req, res) => {
   }
 };
 
-// Create new return log
+// Get return logs (with optional date parameter)
+exports.getReturnLogs = async (req, res) => {
+  try {
+    const { date } = req.query;
+    
+    const whereClause = date ? { date } : {};
+    
+    const returnLogs = await ReturnLog.findAll({
+      where: whereClause,
+      include: [{
+        model: Animal,
+        as: 'animal',
+        attributes: ['id', 'tag_number', 'name', 'type', 'age', 'gender']
+      }]
+    });
+
+    res.json(returnLogs);
+  } catch (error) {
+    console.error('Error fetching return logs:', error);
+    res.status(500).json({ error: 'Failed to fetch return logs' });
+  }
+};
+
+// Create a new return log
 exports.createReturnLog = async (req, res) => {
   try {
-    // Validate required fields for creation
-    if (!req.body.animal_id || !req.body.return_date || !req.body.return_reason) {
-      return res.status(400).json({ error: 'animal_id, return_date, and return_reason are required' });
+    const { animal_id, date, returned } = req.body;
+
+    // Validate required fields
+    if (!animal_id || !date) {
+      return res.status(400).json({ error: 'Animal ID and date are required' });
     }
 
-    // Validate date format
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(req.body.return_date)) {
-      return res.status(400).json({ error: 'return_date must be in YYYY-MM-DD format' });
-    }
-
-    // Verify animal exists
-    const animal = await Animal.findByPk(req.body.animal_id);
+    // Check if animal exists
+    const animal = await Animal.findByPk(animal_id);
     if (!animal) {
       return res.status(404).json({ error: 'Animal not found' });
     }
 
-    const returnLog = await ReturnLog.create(req.body);
-    res.status(201).json(returnLog);
+    // Check if log already exists for this animal and date
+    const existingLog = await ReturnLog.findOne({
+      where: {
+        animal_id,
+        date
+      }
+    });
+
+    if (existingLog) {
+      // Update existing log
+      existingLog.returned = returned;
+      await existingLog.save();
+      return res.json(existingLog);
+    }
+
+    // Create new log
+    const returnLog = await ReturnLog.create({
+      animal_id,
+      date,
+      returned: returned || false
+    });
+
+    // Fetch the created log with animal details
+    const createdLog = await ReturnLog.findByPk(returnLog.id, {
+      include: [{
+        model: Animal,
+        attributes: ['id', 'tag_number', 'name', 'type', 'age', 'gender']
+      }]
+    });
+
+    res.status(201).json(createdLog);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error('Error creating return log:', error);
+    res.status(500).json({ error: 'Failed to create return log' });
   }
 };
 

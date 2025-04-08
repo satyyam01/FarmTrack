@@ -1,5 +1,4 @@
 .qodo
 node_modules
 .env
-frontend/
 __tests__/
