@@ -32,7 +32,7 @@ const transformApiToFrontend = (apiData: any): Animal => {
     age: apiData.age,
     gender: apiData.gender,
     type: apiData.type,
-    last_pregnancy: apiData.last_pregnancy,
+    is_producing_yield: apiData.is_producing_yield,
     created_at: apiData.created_at,
     updated_at: apiData.updated_at
   };
@@ -46,7 +46,7 @@ const transformFrontendToApi = (frontendData: AnimalFormData): any => {
     age: Number(frontendData.age),
     gender: frontendData.gender,
     type: frontendData.type,
-    last_pregnancy: frontendData.last_pregnancy || null
+    is_producing_yield: frontendData.is_producing_yield || false
   };
 };
 

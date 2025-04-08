@@ -55,9 +55,7 @@ export function YieldFormDialog({
       const data = await animalApi.getAll();
       // Filter animals that have had a pregnancy
       const filteredAnimals = data.filter(animal => 
-        animal.last_pregnancy !== null && 
-        animal.last_pregnancy !== undefined && 
-        animal.last_pregnancy !== ''
+        animal.is_producing_yield === true
       );
       setAnimals(filteredAnimals);
     } catch (error) {

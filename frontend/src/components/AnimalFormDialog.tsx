@@ -34,7 +34,7 @@ const formSchema = z.object({
   age: z.coerce.number().min(0, "Age must be a positive number"),
   gender: z.enum(["Male", "Female"]),
   type: z.enum(["Cow", "Goat", "Hen"]),
-  last_pregnancy: z.string().optional(),
+  is_producing_yield: z.boolean().optional(),
 });
 
 interface AnimalFormDialogProps {
@@ -60,7 +60,7 @@ export function AnimalFormDialog({
       age: 0,
       gender: "Male",
       type: "Cow",
-      last_pregnancy: "",
+      is_producing_yield: false,
     },
   });
 
@@ -74,7 +74,7 @@ export function AnimalFormDialog({
         age: animal.age,
         gender: animal.gender,
         type: animal.type,
-        last_pregnancy: animal.last_pregnancy || "",
+        is_producing_yield: animal.is_producing_yield || false,
       });
     } else {
       form.reset({
@@ -83,7 +83,7 @@ export function AnimalFormDialog({
         age: 0,
         gender: "Male",
         type: "Cow",
-        last_pregnancy: "",
+        is_producing_yield: false,
       });
     }
   }, [animal, form]);
@@ -166,13 +166,24 @@ export function AnimalFormDialog({
             {gender === "Female" && (
               <FormField
                 control={form.control}
-                name="last_pregnancy"
+                name="is_producing_yield"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Last Pregnancy Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
+                    <FormLabel>Producing Yield</FormLabel>
+                    <Select
+                      onValueChange={(value) => field.onChange(value === "true")}
+                      value={field.value ? "true" : "false"}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="true">Yes</SelectItem>
+                        <SelectItem value="false">No</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

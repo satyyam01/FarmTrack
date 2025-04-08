@@ -7,7 +7,7 @@ export interface Animal {
   age: number;
   gender: 'Male' | 'Female';
   type: AnimalType;
-  last_pregnancy: string | null;
+  is_producing_yield: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -18,5 +18,5 @@ export interface AnimalFormData {
   age: number;
   gender: 'Male' | 'Female';
   type: AnimalType;
-  last_pregnancy?: string;
+  is_producing_yield?: boolean;
 }

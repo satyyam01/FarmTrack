@@ -127,9 +127,9 @@ exports.deleteYield = async (req, res) => {
 const calculateStats = (yields, allAnimals) => {
   const total = yields.reduce((sum, yield) => sum + Number(yield.quantity), 0);
   const animalsByType = {
-    Cow: allAnimals.filter(a => a.type === 'Cow' && a.last_pregnancy).length,
-    Goat: allAnimals.filter(a => a.type === 'Goat' && a.last_pregnancy).length,
-    Hen: allAnimals.filter(a => a.type === 'Hen' && a.last_pregnancy).length
+    Cow: allAnimals.filter(a => a.type === 'Cow' && a.is_producing_yield).length,
+    Goat: allAnimals.filter(a => a.type === 'Goat' && a.is_producing_yield).length,
+    Hen: allAnimals.filter(a => a.type === 'Hen' && a.is_producing_yield).length
   };
   
   return { 
@@ -154,7 +154,7 @@ exports.getOverview = async (req, res) => {
     // Get all animals first
     const allAnimals = await Animal.findAll({
       where: type ? { type } : {},
-      attributes: ['id', 'name', 'tag_number', 'type', 'last_pregnancy']
+      attributes: ['id', 'name', 'tag_number', 'type', 'is_producing_yield']
     });
 
     // Get all yields with their associated animals

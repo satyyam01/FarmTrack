@@ -34,10 +34,10 @@ export function AnimalCard({ animal, onEdit, onDelete }: AnimalCardProps) {
             <span className="text-muted-foreground">Gender:</span>
             <span>{animal.gender}</span>
           </div>
-          {animal.gender === "Female" && animal.last_pregnancy && (
+          {animal.gender === "Female" && (
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Last Pregnancy:</span>
-              <span>{new Date(animal.last_pregnancy).toLocaleDateString()}</span>
+              <span className="text-muted-foreground">Producing Yield:</span>
+              <span>{animal.is_producing_yield ? "Yes" : "No"}</span>
             </div>
           )}
         </div>

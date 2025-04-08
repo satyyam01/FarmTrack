@@ -58,9 +58,10 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.ENUM('Male', 'Female'),
       allowNull: false
     },
-    last_pregnancy: {
-      type: DataTypes.DATE,
-      allowNull: true
+    is_producing_yield: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: false
     }
   }, {
     sequelize,
