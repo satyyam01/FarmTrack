@@ -6,9 +6,10 @@ import { LogOut } from "lucide-react"
 const navItems = [
   { name: "Dashboard", path: "/dashboard" },
   { name: "Animals", path: "/animals" },
+  { name: "Health Records", path: "/health" },
   { name: "Yields", path: "/yields" },
   { name: "Night Returns", path: "/night-returns" },
-  { name: "Health Records", path: "/health" },
+  { name: "Simulation", path: "/simulation" },
 ]
 
 export function Navbar() {

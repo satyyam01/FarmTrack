@@ -7,6 +7,7 @@ import { HealthRecordPage } from "./pages/HealthRecordPage"
 import { YieldsPage } from "./pages/YieldsPage"
 import { ReturnLogsPage } from "./pages/ReturnLogsPage"
 import { NightReturnTrackerPage } from "./pages/NightReturnTrackerPage"
+import { SimulationPage } from "./pages/SimulationPage"
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
           <Route path="yields" element={<YieldsPage />} />
           <Route path="returns" element={<ReturnLogsPage />} />
           <Route path="night-returns" element={<NightReturnTrackerPage />} />
+          <Route path="simulation" element={<SimulationPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
