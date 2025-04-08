@@ -7,8 +7,10 @@ import { Animal } from "@/types/animal";
 import { YieldOverview } from "@/types/yield";
 import { ReturnLog } from "@/services/api";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, AlertCircle } from "lucide-react";
+import { CheckCircle, AlertCircle, HeartPulse } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 export function DashboardPage() {
   const [animals, setAnimals] = useState<Animal[]>([]);
@@ -78,18 +80,36 @@ export function DashboardPage() {
       {/* Animal Overview Section */}
       <div className="space-y-4">
         <h2 className="text-xl font-semibold">Animals Overview</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Animals</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{animalStats.total}</div>
-              <div className="flex gap-2 mt-2">
+              <div className="flex flex-wrap gap-1 mt-2">
                 <Badge variant="outline">Cows: {animalStats.byType.Cow}</Badge>
                 <Badge variant="outline">Goats: {animalStats.byType.Goat}</Badge>
                 <Badge variant="outline">Hens: {animalStats.byType.Hen}</Badge>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Animal Health</CardTitle>
+              <HeartPulse className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{animalStats.total} Animals</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Checkups & Medications
+              </p>
+              <Link to="/health">
+                <Button variant="outline" size="sm" className="mt-3 w-full">
+                  View Health Records
+                </Button>
+              </Link>
             </CardContent>
           </Card>
 
