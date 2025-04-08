@@ -21,18 +21,14 @@ module.exports = {
         type: Sequelize.STRING,
         allowNull: false
       },
-      first_name: {
-        type: Sequelize.STRING,
-        allowNull: false
-      },
-      last_name: {
+      name: {
         type: Sequelize.STRING,
         allowNull: false
       },
       role: {
-        type: Sequelize.ENUM('admin', 'farmer', 'vet'),
+        type: Sequelize.ENUM('admin', 'user'),
         allowNull: false,
-        defaultValue: 'farmer'
+        defaultValue: 'user'
       },
       is_active: {
         type: Sequelize.BOOLEAN,

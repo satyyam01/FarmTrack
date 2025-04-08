@@ -8,5 +8,7 @@ router.get('/animal/:animalId', yieldController.getYieldsByAnimal);
 router.post('/', yieldController.createYield);
 router.put('/:id', yieldController.updateYield);
 router.delete('/:id', yieldController.deleteYield);
+router.get('/overview', yieldController.getOverview);
+router.delete('/clear/all', yieldController.clearAll);
 
 module.exports = router;

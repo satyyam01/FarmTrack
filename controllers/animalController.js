@@ -1,4 +1,4 @@
-const { Animal, Yield, Medication, Checkup, Note } = require('../models');
+const { Animal, Yield, Medication, Checkup, ReturnLog, sequelize } = require('../models');
 
 // Get all animals
 exports.getAllAnimals = async (req, res) => {
@@ -7,8 +7,7 @@ exports.getAllAnimals = async (req, res) => {
       include: [
         { model: Yield, as: 'yields' },
         { model: Medication, as: 'medications' },
-        { model: Checkup, as: 'checkups' },
-        { model: Note, as: 'notes' }
+        { model: Checkup, as: 'checkups' }
       ]
     });
     res.json(animals);
@@ -24,8 +23,7 @@ exports.getAnimal = async (req, res) => {
       include: [
         { model: Yield, as: 'yields' },
         { model: Medication, as: 'medications' },
-        { model: Checkup, as: 'checkups' },
-        { model: Note, as: 'notes' }
+        { model: Checkup, as: 'checkups' }
       ]
     });
     if (!animal) {
@@ -40,7 +38,7 @@ exports.getAnimal = async (req, res) => {
 // Create new animal
 exports.createAnimal = async (req, res) => {
   try {
-    const { yields, medications, checkups, notes, ...animalData } = req.body;
+    const { yields, medications, checkups, ...animalData } = req.body;
     
     // Validate required fields
     if (!animalData.tag_number || !animalData.name || !animalData.type || !animalData.age || !animalData.gender) {
@@ -72,8 +70,7 @@ exports.createAnimal = async (req, res) => {
       include: [
         { model: Yield, as: 'yields' },
         { model: Medication, as: 'medications' },
-        { model: Checkup, as: 'checkups' },
-        { model: Note, as: 'notes' }
+        { model: Checkup, as: 'checkups' }
       ]
     });
 
@@ -86,19 +83,15 @@ exports.createAnimal = async (req, res) => {
     if (checkups && checkups.length > 0) {
       await Checkup.bulkCreate(checkups.map(c => ({ ...c, animal_id: animal.id })));
     }
-    if (notes && notes.length > 0) {
-      await Note.bulkCreate(notes.map(n => ({ ...n, animal_id: animal.id })));
-    }
 
     const createdAnimal = await Animal.findByPk(animal.id, {
       include: [
         { model: Yield, as: 'yields' },
         { model: Medication, as: 'medications' },
-        { model: Checkup, as: 'checkups' },
-        { model: Note, as: 'notes' }
+        { model: Checkup, as: 'checkups' }
       ]
     });
-
+    
     res.status(201).json(createdAnimal);
   } catch (error) {
     if (error.name === 'SequelizeValidationError') {
@@ -133,14 +126,33 @@ exports.updateAnimal = async (req, res) => {
 // Delete animal
 exports.deleteAnimal = async (req, res) => {
   try {
-    const deleted = await Animal.destroy({
-      where: { id: req.params.id }
-    });
-    if (deleted) {
-      return res.json({ message: 'Animal deleted' });
+    // First, find the animal to make sure it exists
+    const animal = await Animal.findByPk(req.params.id);
+    if (!animal) {
+      return res.status(404).json({ error: 'Animal not found' });
     }
-    throw new Error('Animal not found');
+
+    // Start a transaction
+    const t = await sequelize.transaction();
+    
+    try {
+      // Delete the animal - related records will be deleted automatically due to CASCADE
+      await Animal.destroy({
+        where: { id: req.params.id },
+        transaction: t
+      });
+
+      // Commit the transaction
+      await t.commit();
+      
+      return res.json({ message: 'Animal and all related records deleted' });
+    } catch (error) {
+      // Rollback the transaction if anything fails
+      await t.rollback();
+      throw error;
+    }
   } catch (error) {
+    console.error('Error deleting animal:', error);
     res.status(400).json({ error: error.message });
   }
 };

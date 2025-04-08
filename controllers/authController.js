@@ -17,7 +17,7 @@ const generateToken = (user) => {
 // Register new user
 exports.register = async (req, res) => {
   try {
-    const { email, password, firstName, lastName, role } = req.body;
+    const { email, password, name, role } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ where: { email } });
@@ -29,9 +29,8 @@ exports.register = async (req, res) => {
     const user = await User.create({
       email,
       password,
-      firstName,
-      lastName,
-      role: role || 'farmer'
+      name,
+      role: role || 'user'
     });
 
     // Generate token
@@ -42,8 +41,7 @@ exports.register = async (req, res) => {
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        name: user.name,
         role: user.role
       },
       token
@@ -83,8 +81,7 @@ exports.login = async (req, res) => {
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        name: user.name,
         role: user.role
       },
       token

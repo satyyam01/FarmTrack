@@ -5,11 +5,26 @@ module.exports = (sequelize, DataTypes) => {
   class Animal extends Model {
     static associate(models) {
       // Define associations here
-      Animal.hasMany(models.Yield, { foreignKey: 'animal_id', as: 'yields' });
-      Animal.hasMany(models.ReturnLog, { foreignKey: 'animal_id', as: 'return_logs' });
-      Animal.hasMany(models.Medication, { foreignKey: 'animal_id', as: 'medications' });
-      Animal.hasMany(models.Checkup, { foreignKey: 'animal_id', as: 'checkups' });
-      Animal.hasMany(models.Note, { foreignKey: 'animal_id', as: 'notes' });
+      Animal.hasMany(models.Yield, { 
+        foreignKey: 'animal_id', 
+        as: 'yields',
+        onDelete: 'CASCADE'
+      });
+      Animal.hasMany(models.ReturnLog, { 
+        foreignKey: 'animal_id', 
+        as: 'return_logs',
+        onDelete: 'CASCADE'
+      });
+      Animal.hasMany(models.Medication, { 
+        foreignKey: 'animal_id', 
+        as: 'medications',
+        onDelete: 'CASCADE'
+      });
+      Animal.hasMany(models.Checkup, { 
+        foreignKey: 'animal_id', 
+        as: 'checkups',
+        onDelete: 'CASCADE'
+      });
     }
   }
   Animal.init({
