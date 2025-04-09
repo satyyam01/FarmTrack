@@ -157,19 +157,6 @@ export function YieldsPage() {
     }
   };
 
-  const handleClearAll = async () => {
-    if (window.confirm('Are you sure you want to delete ALL yield entries? This cannot be undone.')) {
-      try {
-        await yieldApi.clearAll();
-        toast.success("All yields cleared successfully");
-        fetchOverview();
-      } catch (error) {
-        console.error("Error clearing yields:", error);
-        toast.error("Failed to clear yields");
-      }
-    }
-  };
-
   const handleClearDates = () => {
     setStartDate("");
     setEndDate("");
