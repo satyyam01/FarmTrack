@@ -44,15 +44,16 @@ export function YieldsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchOverview();
-  }, [selectedType]);
+    fetchOverview(startDate, endDate);
+  }, [selectedType, startDate, endDate]);
 
-  const fetchOverview = async () => {
+  const fetchOverview = async (start?: string, end?: string) => {
     try {
       setIsLoading(true);
       setError(null);
-      console.log('Fetching overview with type:', selectedType);
-      const data = await yieldApi.getOverview(selectedType === "all" ? undefined : selectedType);
+      console.log('Fetching overview with type:', selectedType, 'Start:', start, 'End:', end);
+      const typeParam = selectedType === "all" ? undefined : selectedType;
+      const data = await yieldApi.getOverview(typeParam, start, end);
       console.log('Received overview data:', data);
       
       // Initialize empty arrays if they don't exist
@@ -169,11 +170,17 @@ export function YieldsPage() {
     }
   };
 
+  const handleClearDates = () => {
+    setStartDate("");
+    setEndDate("");
+    // The useEffect hook will automatically refetch with cleared dates
+  };
+
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
         <p className="text-red-500 mb-4">{error}</p>
-        <Button onClick={fetchOverview}>Retry</Button>
+        <Button onClick={() => fetchOverview(startDate, endDate)}>Retry</Button>
       </div>
     );
   }
@@ -191,13 +198,13 @@ export function YieldsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Production Yields Overview</h1>
         <div className="flex gap-2">
-          <Button variant="destructive" onClick={handleClearAll}>Clear All</Button>
+          {/* <Button variant="destructive" onClick={handleClearAll}>Clear All</Button> */}
           <Button onClick={() => setIsDialogOpen(true)}>Add Yield</Button>
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="w-full sm:w-64">
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+        <div className="w-full sm:w-auto sm:min-w-[200px]">
           <Select 
             value={selectedType} 
             onValueChange={(value) => setSelectedType(value as YieldType | "all")}
@@ -214,19 +221,26 @@ export function YieldsPage() {
           </Select>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center flex-wrap">
           <Input
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
             placeholder="Start Date"
+            className="w-auto"
           />
           <Input
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
             placeholder="End Date"
+            className="w-auto"
           />
+          {(startDate || endDate) && (
+            <Button variant="outline" size="sm" onClick={handleClearDates}>
+              Clear Dates
+            </Button>
+          )}
         </div>
       </div>
 
