@@ -32,6 +32,17 @@ export function SimulationPage() {
   const [lastResponse, setLastResponse] = useState<string | null>(null);
   const [progressValue, setProgressValue] = useState<number>(0);
 
+  // Add effect to set default unit based on location
+  useEffect(() => {
+    if (selectedLocation === "MILKING_STATION") {
+      setPayloadUnit("Liters");
+    } else if (selectedLocation === "EGG_COLLECTION") {
+      setPayloadUnit("count");
+    } else {
+      setPayloadUnit("");
+    }
+  }, [selectedLocation]);
+
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null;
 
@@ -153,21 +164,10 @@ export function SimulationPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="unit">Unit (Yield)</Label>
-                <Select 
-                  value={payloadUnit}
-                  onValueChange={setPayloadUnit} 
-                  disabled={isLoading}
-                >
-                  <SelectTrigger id="unit">
-                    <SelectValue placeholder="Select unit..." />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background">
-                    {unitOptions.map(opt => (
-                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Unit</Label>
+                <div className="h-10 px-3 py-2 rounded-md border bg-muted text-sm flex items-center">
+                  {selectedLocation === "MILKING_STATION" ? "Liters" : "Count"}
+                </div>
               </div>
             </div>
           )}
