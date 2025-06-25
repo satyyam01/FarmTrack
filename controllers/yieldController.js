@@ -1,13 +1,11 @@
-const { Yield, Animal } = require('../models');
-const { Op } = require('sequelize');
+const Yield = require('../models/yield');
+const Animal = require('../models/animal');
 const { startOfDay, endOfDay, startOfWeek, startOfMonth, parseISO } = require('date-fns');
 
 // Get all yields
 exports.getAllYields = async (req, res) => {
   try {
-    const yields = await Yield.findAll({
-      include: [{ model: Animal, as: 'animal' }]
-    });
+    const yields = await Yield.find().populate('animal_id');
     res.json(yields);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -17,10 +15,7 @@ exports.getAllYields = async (req, res) => {
 // Get yields by animal
 exports.getYieldsByAnimal = async (req, res) => {
   try {
-    const yields = await Yield.findAll({
-      where: { animal_id: req.params.animalId },
-      include: [{ model: Animal, as: 'animal' }]
-    });
+    const yields = await Yield.find({ animal_id: req.params.animalId }).populate('animal_id');
     res.json(yields);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -30,38 +25,34 @@ exports.getYieldsByAnimal = async (req, res) => {
 // Create new yield
 exports.createYield = async (req, res) => {
   try {
-    // Validate required fields
-    if (!req.body.animal_id || !req.body.quantity || !req.body.unit_type || !req.body.date) {
+    const { animal_id, quantity, unit_type, date } = req.body;
+
+    if (!animal_id || !quantity || !unit_type || !date) {
       return res.status(400).json({ error: 'animal_id, quantity, unit_type, and date are required' });
     }
 
-    // Validate date format
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(req.body.date)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return res.status(400).json({ error: 'date must be in YYYY-MM-DD format' });
     }
 
-    // Validate quantity is positive number
-    if (req.body.quantity <= 0) {
+    if (quantity <= 0) {
       return res.status(400).json({ error: 'quantity must be a positive number' });
     }
 
-    // Validate unit_type
     const validUnits = ['milk', 'egg'];
-    if (!validUnits.includes(req.body.unit_type)) {
+    if (!validUnits.includes(unit_type)) {
       return res.status(400).json({ error: 'unit_type must be one of: milk, egg' });
     }
 
-    // Verify animal exists
-    const animal = await Animal.findByPk(req.body.animal_id);
+    const animal = await Animal.findById(animal_id);
     if (!animal) {
       return res.status(404).json({ error: 'Animal not found' });
     }
 
-    const yieldRecord = await Yield.create(req.body);
-    const yieldWithAnimal = await Yield.findByPk(yieldRecord.id, {
-      include: [{ model: Animal, as: 'animal' }]
-    });
-    res.status(201).json(yieldWithAnimal);
+    const newYield = await Yield.create({ animal_id, quantity, unit_type, date });
+    const populatedYield = await Yield.findById(newYield._id).populate('animal_id');
+
+    res.status(201).json(populatedYield);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -70,40 +61,36 @@ exports.createYield = async (req, res) => {
 // Update yield
 exports.updateYield = async (req, res) => {
   try {
-    // Validate date format if provided
-    if (req.body.date && !/^\d{4}-\d{2}-\d{2}$/.test(req.body.date)) {
+    const { date, quantity, unit_type, animal_id } = req.body;
+
+    if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return res.status(400).json({ error: 'date must be in YYYY-MM-DD format' });
     }
 
-    // Validate quantity is positive number if provided
-    if (req.body.quantity && req.body.quantity <= 0) {
+    if (quantity && quantity <= 0) {
       return res.status(400).json({ error: 'quantity must be a positive number' });
     }
 
-    // Validate unit_type if provided
-    if (req.body.unit_type) {
+    if (unit_type) {
       const validUnits = ['milk', 'egg'];
-      if (!validUnits.includes(req.body.unit_type)) {
+      if (!validUnits.includes(unit_type)) {
         return res.status(400).json({ error: 'unit_type must be one of: milk, egg' });
       }
     }
 
-    // Verify animal exists if animal_id is provided
-    if (req.body.animal_id) {
-      const animal = await Animal.findByPk(req.body.animal_id);
+    if (animal_id) {
+      const animal = await Animal.findById(animal_id);
       if (!animal) {
         return res.status(404).json({ error: 'Animal not found' });
       }
     }
 
-    const [updated] = await Yield.update(req.body, {
-      where: { id: req.params.id }
-    });
-    if (updated) {
-      const updatedYield = await Yield.findByPk(req.params.id);
-      return res.json(updatedYield);
+    const updatedYield = await Yield.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updatedYield) {
+      return res.status(404).json({ error: 'Yield not found' });
     }
-    throw new Error('Yield not found');
+
+    res.json(updatedYield);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -112,148 +99,141 @@ exports.updateYield = async (req, res) => {
 // Delete yield
 exports.deleteYield = async (req, res) => {
   try {
-    const deleted = await Yield.destroy({
-      where: { id: req.params.id }
-    });
-    if (deleted) {
-      return res.json({ message: 'Yield deleted' });
+    const deleted = await Yield.findByIdAndDelete(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ error: 'Yield not found' });
     }
-    throw new Error('Yield not found');
+    res.json({ message: 'Yield deleted' });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };
 
-// Helper function to calculate stats
+// Helper to get today's date as YYYY-MM-DD string
+function getTodayString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// Helper to get start of week as YYYY-MM-DD string
+function getStartOfWeekString() {
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Adjust when day is Sunday
+  const startOfWeek = new Date(now.setDate(diff));
+  const year = startOfWeek.getFullYear();
+  const month = String(startOfWeek.getMonth() + 1).padStart(2, '0');
+  const day = String(startOfWeek.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// Helper to get start of month as YYYY-MM-DD string
+function getStartOfMonthString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}-01`;
+}
+
+// Helper
 const calculateStats = (yields, allAnimals) => {
-  const total = yields.reduce((sum, yield) => sum + Number(yield.quantity), 0);
+  const total = yields.reduce((sum, y) => sum + Number(y.quantity), 0);
   const animalsByType = {
     Cow: allAnimals.filter(a => a.type === 'Cow' && a.is_producing_yield).length,
     Goat: allAnimals.filter(a => a.type === 'Goat' && a.is_producing_yield).length,
-    Hen: allAnimals.filter(a => a.type === 'Hen' && a.is_producing_yield).length
+    Hen: allAnimals.filter(a => a.type === 'Hen' && a.is_producing_yield).length,
   };
-  
-  return { 
-    total, 
-    yields,
-    animalsByType
-  };
+  // Map yields to include 'animal' sub-object for frontend compatibility
+  const mappedYields = yields.map(y => ({
+    id: y._id?.toString?.() || y.id,
+    animal_id: y.animal_id?._id?.toString?.() || y.animal_id?.id || y.animal_id,
+    // Date is already a string, no conversion needed
+    date: y.date,
+    quantity: y.quantity,
+    unit_type: y.unit_type,
+    created_at: y.createdAt,
+    updated_at: y.updatedAt,
+    animal: y.animal_id && typeof y.animal_id === 'object' ? {
+      id: y.animal_id._id?.toString?.() || y.animal_id.id,
+      name: y.animal_id.name,
+      tag_number: y.animal_id.tag_number,
+      type: y.animal_id.type
+    } : undefined
+  }));
+  return { total, yields: mappedYields, animalsByType };
 };
 
-// Get yield overview
+// Overview
 exports.getOverview = async (req, res) => {
   try {
     const { type, startDate, endDate } = req.query;
+    
+    console.log('=== Backend getOverview Debug ===');
+    console.log('Query params:', { type, startDate, endDate });
+    console.log('startDate type:', typeof startDate, 'value:', startDate);
+    console.log('endDate type:', typeof endDate, 'value:', endDate);
 
-    // --- Date Filter Setup ---
-    const dateWhereClause = {};
-    if (startDate) {
-        try {
-             // Use startOfDay to ensure we capture the whole day
-             dateWhereClause.date = { [Op.gte]: startOfDay(parseISO(startDate)) };
-        } catch (e) {
-            return res.status(400).json({ error: 'Invalid startDate format. Use YYYY-MM-DD.' });
-        }
-    }
-    if (endDate) {
-         try {
-             // Use endOfDay to ensure we capture the whole day
-             const endOfDayDate = endOfDay(parseISO(endDate));
-             if (dateWhereClause.date) {
-                 dateWhereClause.date[Op.lte] = endOfDayDate;
-             } else {
-                 dateWhereClause.date = { [Op.lte]: endOfDayDate };
-             }
-         } catch (e) {
-             return res.status(400).json({ error: 'Invalid endDate format. Use YYYY-MM-DD.' });
-         }
-    }
-    // --- End Date Filter Setup ---
+    const animalQuery = type ? { type } : {};
+    const animals = await Animal.find(animalQuery);
+    const animalIds = animals.map(a => a._id);
 
-    const animalWhereClause = type ? { type } : {};
-
-    // Get all relevant animals first (filtered by type if specified)
-    const allAnimals = await Animal.findAll({
-      where: animalWhereClause,
-      attributes: ['id', 'name', 'tag_number', 'type', 'is_producing_yield']
-    });
-    const animalIds = allAnimals.map(a => a.id);
-    if (animalIds.length === 0) { // Handle case where type filter yields no animals
-         return res.json({ 
-             daily: calculateStats([], []), 
-             weekly: calculateStats([], []), 
-             monthly: calculateStats([], []), 
-             animals: [] 
-         });
+    if (animalIds.length === 0) {
+      return res.json({ daily: calculateStats([], []), weekly: calculateStats([], []), monthly: calculateStats([], []), animals: [] });
     }
 
-    // Base where clause for yields (filter by animal IDs)
-    const baseYieldWhere = { 
-        animal_id: { [Op.in]: animalIds },
-        ...dateWhereClause // Apply date filter here
+    let yieldFilter = {
+      animal_id: { $in: animalIds }
     };
 
-    // Get all yields matching animal and date filters
-    // We fetch ALL relevant yields once, then filter in memory for periods
-    const allFilteredYields = await Yield.findAll({
-      where: baseYieldWhere,
-      include: [{
-        model: Animal,
-        as: 'animal',
-        // No need for type filter here, already filtered by animal_id
-      }],
-      order: [['date', 'DESC']] // Optional: order results
+    // If date range is provided, filter by date strings
+    if (startDate && endDate && startDate === endDate) {
+      // Exact match for single day
+      yieldFilter.date = startDate;
+      console.log('Using exact date match:', startDate);
+    } else if (startDate || endDate) {
+      yieldFilter.date = {};
+      if (startDate) yieldFilter.date.$gte = startDate;
+      if (endDate) yieldFilter.date.$lte = endDate;
+      console.log('Using range filter:', yieldFilter.date);
+    }
+    
+    console.log('Final yieldFilter:', JSON.stringify(yieldFilter, null, 2));
+
+    const allYields = await Yield.find(yieldFilter).populate('animal_id').sort({ date: -1 });
+    console.log('Found yields:', allYields.length);
+    allYields.forEach((y, index) => {
+      console.log(`Yield ${index + 1}: date="${y.date}", animal="${y.animal_id?.name}"`);
     });
 
-    // Calculate period start dates (relative to today *if no date filter applied*)
-    // If date filters *are* applied, these period calculations are less relevant
-    // for the response structure, but we still need the stats structure.
-    const todayDate = new Date();
-    const todayStart = startOfDay(todayDate);
-    const weekStart = startOfWeek(todayDate); 
-    const monthStart = startOfMonth(todayDate);
+    // Filter yields based on date strings (no date-fns needed)
+    const today = getTodayString();
+    const startOfWeek = getStartOfWeekString();
+    const startOfMonth = getStartOfMonthString();
 
-    // Filter in memory for periods IF no date filter was applied
-    // OR - If a date filter *was* applied, the periods effectively become the filtered range
-    const dailyYields = !startDate && !endDate 
-        ? allFilteredYields.filter(y => parseISO(y.date).getTime() >= todayStart.getTime()) 
-        : allFilteredYields; // If filtered by date, 'daily' represents the whole filtered set for the table
+    const dailyYields = !startDate && !endDate ? allYields.filter(y => y.date >= today) : allYields;
+    const weeklyYields = !startDate && !endDate ? allYields.filter(y => y.date >= startOfWeek) : allYields;
+    const monthlyYields = !startDate && !endDate ? allYields.filter(y => y.date >= startOfMonth) : allYields;
 
-    const weeklyYields = !startDate && !endDate 
-        ? allFilteredYields.filter(y => parseISO(y.date).getTime() >= weekStart.getTime()) 
-        : allFilteredYields; // Also represents the full filtered set
-
-    const monthlyYields = !startDate && !endDate 
-        ? allFilteredYields.filter(y => parseISO(y.date).getTime() >= monthStart.getTime()) 
-        : allFilteredYields; // Also represents the full filtered set
-
-    // Note: If dates are provided, 'weekly' and 'monthly' stats will be the same 
-    // as 'daily' because they all operate on the same date-filtered dataset. 
-    // The frontend Tabs might need adjustment if true date-range specific stats are needed.
-    const response = {
-      daily: calculateStats(dailyYields, allAnimals),
-      weekly: calculateStats(weeklyYields, allAnimals),
-      monthly: calculateStats(monthlyYields, allAnimals),
-      animals: allAnimals
-    };
-
-    res.json(response);
+    res.json({
+      daily: calculateStats(dailyYields, animals),
+      weekly: calculateStats(weeklyYields, animals),
+      monthly: calculateStats(monthlyYields, animals),
+      animals,
+    });
   } catch (error) {
-    console.error('Error in getOverview:', error);
     res.status(500).json({ error: error.message });
   }
 };
 
-// Clear all yields
+// Clear all
 exports.clearAll = async (req, res) => {
   try {
-    await Yield.destroy({
-      where: {},
-      truncate: true
-    });
-    return res.json({ message: 'All yields cleared successfully' });
+    await Yield.deleteMany({});
+    res.json({ message: 'All yields cleared successfully' });
   } catch (error) {
-    console.error('Error clearing yields:', error);
     res.status(500).json({ error: error.message });
   }
 };

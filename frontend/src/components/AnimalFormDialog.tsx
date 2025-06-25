@@ -33,7 +33,7 @@ const formSchema = z.object({
   tag_number: z.string().min(1, "Tag number is required"),
   age: z.coerce.number().min(0, "Age must be a positive number"),
   gender: z.enum(["Male", "Female"]),
-  type: z.enum(["Cow", "Goat", "Hen"]),
+  type: z.enum(["Cow", "Goat", "Hen", "Horse", "Sheep"]),
   is_producing_yield: z.boolean().optional(),
 });
 
@@ -208,6 +208,8 @@ export function AnimalFormDialog({
                       <SelectItem value="Cow">Cow</SelectItem>
                       <SelectItem value="Goat">Goat</SelectItem>
                       <SelectItem value="Hen">Hen</SelectItem>
+                      <SelectItem value="Horse">Horse</SelectItem>
+                      <SelectItem value="Sheep">Sheep</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

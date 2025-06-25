@@ -1,11 +1,12 @@
-const { ReturnLog, Animal } = require('../models');
-const { Op } = require('sequelize');
+const ReturnLog = require('../models/returnLog');
+const Animal = require('../models/animal');
 
 // Get all return logs
 exports.getAllReturnLogs = async (req, res) => {
   try {
-    const returnLogs = await ReturnLog.findAll({
-      include: [{ model: Animal, as: 'animal' }]
+    const returnLogs = await ReturnLog.find().populate({
+      path: 'animal_id',
+      select: 'tag_number name type age gender'
     });
     res.json(returnLogs);
   } catch (error) {
@@ -16,9 +17,9 @@ exports.getAllReturnLogs = async (req, res) => {
 // Get return logs by animal
 exports.getReturnLogsByAnimal = async (req, res) => {
   try {
-    const returnLogs = await ReturnLog.findAll({
-      where: { animal_id: req.params.animalId },
-      include: [{ model: Animal, as: 'animal' }]
+    const returnLogs = await ReturnLog.find({ animal_id: req.params.animalId }).populate({
+      path: 'animal_id',
+      select: 'tag_number name type age gender'
     });
     res.json(returnLogs);
   } catch (error) {
@@ -26,117 +27,90 @@ exports.getReturnLogsByAnimal = async (req, res) => {
   }
 };
 
-// Get return logs (with optional date parameter)
+// Get return logs with optional date filter
 exports.getReturnLogs = async (req, res) => {
   try {
     const { date } = req.query;
-    
+    console.log("📆 Query Date:", date); // ✅ Debugging log
+
     const whereClause = date ? { date } : {};
-    
-    const returnLogs = await ReturnLog.findAll({
-      where: whereClause,
-      include: [{
-        model: Animal,
-        as: 'animal',
-        attributes: ['id', 'tag_number', 'name', 'type', 'age', 'gender']
-      }]
+
+    const returnLogs = await ReturnLog.find(whereClause).populate({
+      path: 'animal_id',
+      select: 'tag_number name type age gender'
     });
 
     res.json(returnLogs);
   } catch (error) {
-    console.error('Error fetching return logs:', error);
+    console.error('❌ Error fetching return logs:', error); // ✅ Detailed logging
     res.status(500).json({ error: 'Failed to fetch return logs' });
   }
 };
 
-// Create a new return log
+
+// Create or update return log for an animal and date
 exports.createReturnLog = async (req, res) => {
   try {
-    const { animal_id, date, returned } = req.body;
+    const { animal_id, date, returned, return_reason } = req.body;
+    console.log("🐮 Creating return log for:", animal_id); // ✅
 
-    // Validate required fields
     if (!animal_id || !date) {
       return res.status(400).json({ error: 'Animal ID and date are required' });
     }
 
-    // Check if animal exists
-    const animal = await Animal.findByPk(animal_id);
+    const animal = await Animal.findById(animal_id);
     if (!animal) {
       return res.status(404).json({ error: 'Animal not found' });
     }
 
-    // Check if log already exists for this animal and date
-    const existingLog = await ReturnLog.findOne({
-      where: {
-        animal_id,
-        date
-      }
-    });
+    const existingLog = await ReturnLog.findOne({ animal_id, date });
 
     if (existingLog) {
-      // Update existing log
       existingLog.returned = returned;
+      if (return_reason) existingLog.return_reason = return_reason;
       await existingLog.save();
       return res.json(existingLog);
     }
 
-    // Create new log
     const returnLog = await ReturnLog.create({
       animal_id,
       date,
-      returned: returned || false
+      returned: returned || false,
+      return_reason
     });
 
-    // Fetch the created log with animal details
-    const createdLog = await ReturnLog.findByPk(returnLog.id, {
-      include: [{
-        model: Animal,
-        attributes: ['id', 'tag_number', 'name', 'type', 'age', 'gender']
-      }]
+    const createdLog = await ReturnLog.findById(returnLog._id).populate({
+      path: 'animal_id',
+      select: 'tag_number name type age gender'
     });
 
     res.status(201).json(createdLog);
   } catch (error) {
-    console.error('Error creating return log:', error);
+    console.error('❌ Error creating return log:', error); // ✅
     res.status(500).json({ error: 'Failed to create return log' });
   }
 };
 
+
 // Update return log
 exports.updateReturnLog = async (req, res) => {
   try {
-    // Normalize field names
-    if (req.body.reason) {
-      req.body.return_reason = req.body.reason;
-      delete req.body.reason;
-    }
+    const { animal_id } = req.body;
 
-    // Validate date format if provided
-    if (req.body.return_date && !/^\d{4}-\d{2}-\d{2}$/.test(req.body.return_date)) {
-      return res.status(400).json({ error: 'return_date must be in YYYY-MM-DD format' });
-    }
-
-    // Verify animal exists if animal_id is provided
-    if (req.body.animal_id) {
-      const animal = await Animal.findByPk(req.body.animal_id);
+    if (animal_id) {
+      const animal = await Animal.findById(animal_id);
       if (!animal) {
         return res.status(404).json({ error: 'Animal not found' });
       }
     }
 
-    const [updated] = await ReturnLog.update(req.body, {
-      where: { id: req.params.id }
-    });
-    if (updated) {
-      const updatedReturnLog = await ReturnLog.findByPk(req.params.id);
-      // Map return_reason back to reason for backward compatibility
-      const response = updatedReturnLog.get({ plain: true });
-      if (response.return_reason) {
-        response.reason = response.return_reason;
-      }
-      return res.json(response);
+    const updated = await ReturnLog.findByIdAndUpdate(req.params.id, req.body, { new: true });
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Return log not found' });
     }
-    throw new Error('Return log not found');
+
+    res.json(updated);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -145,13 +119,11 @@ exports.updateReturnLog = async (req, res) => {
 // Delete return log
 exports.deleteReturnLog = async (req, res) => {
   try {
-    const deleted = await ReturnLog.destroy({
-      where: { id: req.params.id }
-    });
-    if (deleted) {
-      return res.json({ message: 'Return log deleted' });
+    const deleted = await ReturnLog.findByIdAndDelete(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ error: 'Return log not found' });
     }
-    throw new Error('Return log not found');
+    res.json({ message: 'Return log deleted' });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }

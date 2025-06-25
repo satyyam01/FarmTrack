@@ -1,158 +1,121 @@
-const { Animal, Yield, Medication, Checkup, ReturnLog, sequelize } = require('../models');
+const Animal = require('../models/animal');
+const Yield = require('../models/yield');
+const Medication = require('../models/medication');
+const Checkup = require('../models/checkup');
+const ReturnLog = require('../models/returnLog');
 
-// Get all animals
+// GET all animals with their related data
 exports.getAllAnimals = async (req, res) => {
   try {
-    const animals = await Animal.findAll({
-      include: [
-        { model: Yield, as: 'yields' },
-        { model: Medication, as: 'medications' },
-        { model: Checkup, as: 'checkups' }
-      ]
-    });
+    const animals = await Animal.find()
+      .populate('yields')
+      .populate('medications')
+      .populate('checkups')
+      .populate('return_logs');
     res.json(animals);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Get single animal
+// GET single animal by ID
 exports.getAnimal = async (req, res) => {
   try {
-    const animal = await Animal.findByPk(req.params.id, {
-      include: [
-        { model: Yield, as: 'yields' },
-        { model: Medication, as: 'medications' },
-        { model: Checkup, as: 'checkups' }
-      ]
-    });
-    if (!animal) {
-      return res.status(404).json({ error: 'Animal not found' });
-    }
+    const animal = await Animal.findById(req.params.id)
+      .populate('yields')
+      .populate('medications')
+      .populate('checkups')
+      .populate('return_logs');
+
+    if (!animal) return res.status(404).json({ error: 'Animal not found' });
     res.json(animal);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Create new animal
+// POST create a new animal
 exports.createAnimal = async (req, res) => {
   try {
-    const { yields, medications, checkups, ...animalData } = req.body;
-    
-    // Validate required fields
-    if (!animalData.tag_number || !animalData.name || !animalData.type || !animalData.age || !animalData.gender) {
-      return res.status(400).json({ error: 'All required fields must be provided' });
+    const { yields, medications, checkups, return_logs, ...animalData } = req.body;
+
+    const requiredFields = ['tag_number', 'name', 'type', 'age', 'gender'];
+    for (let field of requiredFields) {
+      if (!animalData[field]) {
+        return res.status(400).json({ error: `Missing required field: ${field}` });
+      }
     }
 
-    // Validate tag_number length
-    if (animalData.tag_number.length > 255) {
-      return res.status(400).json({ error: 'Tag number must be 255 characters or less' });
-    }
-
-    // Validate age is positive number
+    // Validation checks
     if (animalData.age < 0) {
       return res.status(400).json({ error: 'Age must be a positive number' });
     }
 
-    // Validate type is valid enum value
     const validTypes = ['Cow', 'Hen', 'Horse', 'Sheep', 'Goat'];
     if (!validTypes.includes(animalData.type)) {
       return res.status(400).json({ error: 'Invalid animal type' });
     }
 
-    // Validate gender is valid enum value
     if (!['Male', 'Female'].includes(animalData.gender)) {
       return res.status(400).json({ error: 'Invalid gender' });
     }
-    
-    const animal = await Animal.create(animalData, {
-      include: [
-        { model: Yield, as: 'yields' },
-        { model: Medication, as: 'medications' },
-        { model: Checkup, as: 'checkups' }
-      ]
-    });
 
+    const animal = await Animal.create(animalData);
+
+    // Create related records
     if (yields && yields.length > 0) {
-      await Yield.bulkCreate(yields.map(y => ({ ...y, animal_id: animal.id })));
+      await Yield.insertMany(yields.map(y => ({ ...y, animal_id: animal._id })));
     }
     if (medications && medications.length > 0) {
-      await Medication.bulkCreate(medications.map(m => ({ ...m, animal_id: animal.id })));
+      await Medication.insertMany(medications.map(m => ({ ...m, animal_id: animal._id })));
     }
     if (checkups && checkups.length > 0) {
-      await Checkup.bulkCreate(checkups.map(c => ({ ...c, animal_id: animal.id })));
+      await Checkup.insertMany(checkups.map(c => ({ ...c, animal_id: animal._id })));
+    }
+    if (return_logs && return_logs.length > 0) {
+      await ReturnLog.insertMany(return_logs.map(r => ({ ...r, animal_id: animal._id })));
     }
 
-    const createdAnimal = await Animal.findByPk(animal.id, {
-      include: [
-        { model: Yield, as: 'yields' },
-        { model: Medication, as: 'medications' },
-        { model: Checkup, as: 'checkups' }
-      ]
-    });
-    
-    res.status(201).json(createdAnimal);
+    // Return full populated document
+    const fullAnimal = await Animal.findById(animal._id)
+      .populate('yields')
+      .populate('medications')
+      .populate('checkups')
+      .populate('return_logs');
+
+    res.status(201).json(fullAnimal);
   } catch (error) {
-    if (error.name === 'SequelizeValidationError') {
-      return res.status(400).json({ 
-        error: 'Validation failed',
-        details: error.errors.map(e => e.message) 
-      });
-    }
     res.status(500).json({ error: error.message });
   }
 };
 
-// Update animal
+// PUT update animal
 exports.updateAnimal = async (req, res) => {
   try {
-    const [updated] = await Animal.update(req.body, {
-      where: { id: req.params.id }
-    });
-    if (updated) {
-      const updatedAnimal = await Animal.findByPk(req.params.id);
-      return res.json(updatedAnimal);
-    }
-    throw new Error('Animal not found');
+    const animal = await Animal.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!animal) return res.status(404).json({ error: 'Animal not found' });
+    res.json(animal);
   } catch (error) {
-    if (error.message === 'Animal not found') {
-      return res.status(404).json({ error: 'Animal not found' });
-    }
     res.status(500).json({ error: error.message });
   }
 };
 
-// Delete animal
+// DELETE animal and related records
 exports.deleteAnimal = async (req, res) => {
   try {
-    // First, find the animal to make sure it exists
-    const animal = await Animal.findByPk(req.params.id);
-    if (!animal) {
-      return res.status(404).json({ error: 'Animal not found' });
-    }
+    const animal = await Animal.findById(req.params.id);
+    if (!animal) return res.status(404).json({ error: 'Animal not found' });
 
-    // Start a transaction
-    const t = await sequelize.transaction();
-    
-    try {
-      // Delete the animal - related records will be deleted automatically due to CASCADE
-      await Animal.destroy({
-        where: { id: req.params.id },
-        transaction: t
-      });
+    await Promise.all([
+      Yield.deleteMany({ animal_id: animal._id }),
+      Medication.deleteMany({ animal_id: animal._id }),
+      Checkup.deleteMany({ animal_id: animal._id }),
+      ReturnLog.deleteMany({ animal_id: animal._id }),
+      Animal.findByIdAndDelete(animal._id)
+    ]);
 
-      // Commit the transaction
-      await t.commit();
-      
-      return res.json({ message: 'Animal and all related records deleted' });
-    } catch (error) {
-      // Rollback the transaction if anything fails
-      await t.rollback();
-      throw error;
-    }
+    res.json({ message: 'Animal and all related records deleted' });
   } catch (error) {
-    console.error('Error deleting animal:', error);
-    res.status(400).json({ error: error.message });
+    res.status(500).json({ error: error.message });
   }
 };

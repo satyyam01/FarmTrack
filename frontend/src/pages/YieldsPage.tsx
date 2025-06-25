@@ -22,6 +22,8 @@ import { YieldType, YieldPeriod, YieldOverview, YieldFormData, Yield } from "../
 import { yieldApi } from "../services/yieldApi";
 import { toast } from "sonner";
 import { YieldFormDialog } from "../components/YieldFormDialog";
+import { Calendar } from "../components/ui/calendar";
+import { format } from "date-fns";
 
 export interface YieldStats {
   total: number;
@@ -36,25 +38,47 @@ export interface YieldStats {
 export function YieldsPage() {
   const [selectedType, setSelectedType] = useState<YieldType | "all">("all");
   const [selectedPeriod, setSelectedPeriod] = useState<YieldPeriod>("day");
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
   const [overview, setOverview] = useState<YieldOverview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
   useEffect(() => {
-    fetchOverview(startDate, endDate);
-  }, [selectedType, startDate, endDate]);
+    const dateStr = selectedDate ? formatDate(selectedDate) : getTodayLocal();
+    console.log('=== Date Selection Debug ===');
+    console.log('selectedDate:', selectedDate);
+    console.log('formatted dateStr:', dateStr);
+    console.log('selectedDate.toISOString():', selectedDate?.toISOString());
+    console.log('selectedDate.getTime():', selectedDate?.getTime());
+    fetchOverview(dateStr, dateStr);
+    // Get user role from localStorage
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "null");
+      setUserRole(user?.role || null);
+    } catch {
+      setUserRole(null);
+    }
+  }, [selectedType, selectedDate]);
 
   const fetchOverview = async (start?: string, end?: string) => {
     try {
       setIsLoading(true);
       setError(null);
+      console.log('=== fetchOverview Debug ===');
       console.log('Fetching overview with type:', selectedType, 'Start:', start, 'End:', end);
+      console.log('Start date type:', typeof start, 'Value:', start);
+      console.log('End date type:', typeof end, 'Value:', end);
       const typeParam = selectedType === "all" ? undefined : selectedType;
       const data = await yieldApi.getOverview(typeParam, start, end);
       console.log('Received overview data:', data);
+      console.log('Daily yields count:', data.daily?.yields?.length || 0);
+      if (data.daily?.yields) {
+        data.daily.yields.forEach((yieldItem, index) => {
+          console.log(`Yield ${index + 1}: date="${yieldItem.date}", animal="${yieldItem.animal?.name}"`);
+        });
+      }
       
       // Initialize empty arrays if they don't exist
       const processedData: YieldOverview = {
@@ -99,7 +123,7 @@ export function YieldsPage() {
     try {
       await yieldApi.delete(id);
       toast.success("Yield deleted successfully");
-      fetchOverview();
+      fetchOverview(selectedDate ? formatDate(selectedDate) : undefined, selectedDate ? formatDate(selectedDate) : undefined);
     } catch (error) {
       console.error("Error deleting yield:", error);
       toast.error("Failed to delete yield");
@@ -133,10 +157,7 @@ export function YieldsPage() {
       console.log('Submitting yield data:', data);
       const response = await yieldApi.create(data);
       console.log('Created yield response:', response);
-      
-      // Fetch updated overview data
-      fetchOverview();
-      
+      fetchOverview(selectedDate ? formatDate(selectedDate) : undefined, selectedDate ? formatDate(selectedDate) : undefined);
       toast.success("Yield added successfully");
       setIsDialogOpen(false);
     } catch (error) {
@@ -157,17 +178,29 @@ export function YieldsPage() {
     }
   };
 
-  const handleClearDates = () => {
-    setStartDate("");
-    setEndDate("");
-    // The useEffect hook will automatically refetch with cleared dates
-  };
+  // Helper to get today's date in YYYY-MM-DD
+  function getTodayLocal(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  // Helper to format date as YYYY-MM-DD (local timezone)
+  function formatDate(date: Date | undefined): string | undefined {
+    if (!date) return undefined;
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
 
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
         <p className="text-red-500 mb-4">{error}</p>
-        <Button onClick={() => fetchOverview(startDate, endDate)}>Retry</Button>
+        <Button onClick={() => fetchOverview(selectedDate ? formatDate(selectedDate) : undefined, selectedDate ? formatDate(selectedDate) : undefined)}>Retry</Button>
       </div>
     );
   }
@@ -186,7 +219,9 @@ export function YieldsPage() {
         <h1 className="text-3xl font-bold">Production Yields Overview</h1>
         <div className="flex gap-2">
           {/* <Button variant="destructive" onClick={handleClearAll}>Clear All</Button> */}
-          <Button onClick={() => setIsDialogOpen(true)}>Add Yield</Button>
+          {userRole === "admin" && (
+            <Button onClick={() => setIsDialogOpen(true)}>Add Yield</Button>
+          )}
         </div>
       </div>
 
@@ -207,27 +242,23 @@ export function YieldsPage() {
             </SelectContent>
           </Select>
         </div>
-
-        <div className="flex gap-2 items-center flex-wrap">
-          <Input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            placeholder="Start Date"
-            className="w-auto"
-          />
-          <Input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            placeholder="End Date"
-            className="w-auto"
-          />
-          {(startDate || endDate) && (
-            <Button variant="outline" size="sm" onClick={handleClearDates}>
-              Clear Dates
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2 items-center">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={setSelectedDate}
+              numberOfMonths={1}
+            />
+            <Button variant="outline" size="sm" onClick={() => setSelectedDate(new Date())}>
+              Today
             </Button>
-          )}
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {selectedDate
+              ? `Showing yields for ${format(selectedDate, 'yyyy-MM-dd')}`
+              : `Showing yields for today (${getTodayLocal()})`}
+          </div>
         </div>
       </div>
 
@@ -459,7 +490,7 @@ export function YieldsPage() {
                   <TableCell>
                     {yieldEntry.quantity.toFixed(2)} {getYieldUnit(yieldEntry.animal?.type as YieldType)}
                   </TableCell>
-                  <TableCell>{new Date(yieldEntry.date).toLocaleDateString()}</TableCell>
+                  <TableCell>{yieldEntry.date}</TableCell>
                   <TableCell>
                     <Button
                       variant="destructive"

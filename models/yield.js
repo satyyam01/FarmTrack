@@ -1,47 +1,10 @@
-'use strict';
-const { Model, Sequelize } = require('sequelize');
+const mongoose = require('mongoose');
 
-module.exports = (sequelize, DataTypes) => {
-  class Yield extends Model {
-    static associate(models) {
-      Yield.belongsTo(models.Animal, {
-        foreignKey: 'animal_id',
-        as: 'animal'
-      });
-    }
-  }
-  Yield.init({
-    animal_id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'animals',
-        key: 'id'
-      }
-    },
-    date: {
-      type: DataTypes.DATEONLY,
-      allowNull: false,
-      defaultValue: Sequelize.NOW
-    },
-    quantity: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: false,
-      validate: {
-        min: 0
-      }
-    },
-    unit_type: {
-      type: DataTypes.ENUM('milk', 'egg'),
-      allowNull: false
-    }
-  }, {
-    sequelize,
-    modelName: 'Yield',
-    tableName: 'yields',
-    timestamps: true,
-    underscored: true
-  });
+const yieldSchema = new mongoose.Schema({
+  animal_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Animal', required: true },
+  date: { type: String, required: true },
+  quantity: { type: Number, required: true, min: 0 },
+  unit_type: { type: String, enum: ['milk', 'egg'], required: true }
+}, { timestamps: true });
 
-  return Yield;
-};
+module.exports = mongoose.model('Yield', yieldSchema);

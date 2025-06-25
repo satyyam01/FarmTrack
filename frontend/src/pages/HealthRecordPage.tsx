@@ -22,6 +22,17 @@ export function HealthRecordPage() {
   const [isCheckupModalOpen, setIsCheckupModalOpen] = useState<boolean>(false);
   const [isMedicationModalOpen, setIsMedicationModalOpen] = useState<boolean>(false);
   const [currentAnimalForModal, setCurrentAnimalForModal] = useState<Animal | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Get user role from localStorage
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "null");
+      setUserRole(user?.role || null);
+    } catch {
+      setUserRole(null);
+    }
+  }, []);
 
   useEffect(() => {
     const loadAnimalsAndCounts = async () => {
@@ -121,6 +132,7 @@ export function HealthRecordPage() {
               setCurrentAnimalForModal(null);
               handleModalClose();
           }}
+          userRole={userRole}
         />
       )}
 
@@ -134,6 +146,7 @@ export function HealthRecordPage() {
               setCurrentAnimalForModal(null);
               handleModalClose();
           }}
+          userRole={userRole}
         />
       )}
     </div>

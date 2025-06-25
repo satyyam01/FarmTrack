@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { authApi } from "@/services/api"
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -13,11 +14,39 @@ export function LoginPage() {
     password: "",
     name: "",
   })
+  const [tab, setTab] = useState("login")
+  const [error, setError] = useState("")
+  const [date, setDate] = useState<string>(getTodayLocal())
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Implement authentication
-    navigate("/dashboard")
+    setError("")
+    try {
+      const { token, user } = await authApi.login(formData.email, formData.password)
+      localStorage.setItem("token", token)
+      localStorage.setItem("user", JSON.stringify(user))
+      navigate("/dashboard")
+    } catch (err: any) {
+      setError(err?.response?.data?.error || "Login failed")
+    }
+  }
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+    try {
+      const { token, user } = await authApi.register(formData.name, formData.email, formData.password)
+      localStorage.setItem("token", token)
+      localStorage.setItem("user", JSON.stringify(user))
+      navigate("/dashboard")
+    } catch (err: any) {
+      setError(err?.response?.data?.error || "Registration failed")
+    }
+  }
+
+  function getTodayLocal(): string {
+    const now = new Date();
+    return now.toISOString().split('T')[0];
   }
 
   return (
@@ -30,13 +59,13 @@ export function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="login" className="w-full">
+          <Tabs defaultValue="login" className="w-full" onValueChange={setTab}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Login</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
             </TabsList>
             <TabsContent value="login" className="space-y-4">
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
@@ -59,13 +88,16 @@ export function LoginPage() {
                     required
                   />
                 </div>
+                {error && tab === "login" && (
+                  <div className="text-red-500 text-sm text-center">{error}</div>
+                )}
                 <Button type="submit" className="w-full">
                   Sign In
                 </Button>
               </form>
             </TabsContent>
             <TabsContent value="signup" className="space-y-4">
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleRegister} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name</Label>
                   <Input
@@ -99,6 +131,9 @@ export function LoginPage() {
                     required
                   />
                 </div>
+                {error && tab === "signup" && (
+                  <div className="text-red-500 text-sm text-center">{error}</div>
+                )}
                 <Button type="submit" className="w-full">
                   Create Account
                 </Button>

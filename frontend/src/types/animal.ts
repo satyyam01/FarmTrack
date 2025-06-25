@@ -1,7 +1,7 @@
-export type AnimalType = 'Cow' | 'Goat' | 'Hen';
+export type AnimalType = 'Cow' | 'Goat' | 'Hen' | 'Horse' | 'Sheep';
 
 export interface Animal {
-  id: number;
+  id: string;
   name: string;
   tag_number: string;
   age: number;

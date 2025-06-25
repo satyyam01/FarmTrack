@@ -1,48 +1,11 @@
-'use strict';
-const { Model, Sequelize } = require('sequelize');
+const mongoose = require('mongoose');
 
-module.exports = (sequelize, DataTypes) => {
-  class Checkup extends Model {
-    static associate(models) {
-      Checkup.belongsTo(models.Animal, {
-        foreignKey: 'animal_id',
-        as: 'animal'
-      });
-    }
-  }
-  Checkup.init({
-    animal_id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'animals',
-        key: 'id'
-      }
-    },
-    date: {
-      type: DataTypes.DATEONLY,
-      allowNull: false,
-      defaultValue: Sequelize.NOW
-    },
-    vet_name: {
-      type: DataTypes.STRING,
-      allowNull: false
-    },
-    notes: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-    diagnosis: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    }
-  }, {
-    sequelize,
-    modelName: 'Checkup',
-    tableName: 'checkups',
-    timestamps: true,
-    underscored: true
-  });
+const checkupSchema = new mongoose.Schema({
+  animal_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Animal', required: true },
+  date: { type: Date, required: true, default: Date.now },
+  vet_name: { type: String, required: true },
+  notes: { type: String },
+  diagnosis: { type: String }
+}, { timestamps: true });
 
-  return Checkup;
-};
+module.exports = mongoose.model('Checkup', checkupSchema);

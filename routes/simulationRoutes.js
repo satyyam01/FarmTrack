@@ -1,9 +1,12 @@
-// routes/simulationRoutes.js
 const express = require('express');
 const router = express.Router();
 const simulationController = require('../controllers/simulationController');
+const { authenticate, authorize } = require('../middleware/auth');
 
-// Define the simulation endpoint
-router.post('/scan', simulationController.handleScan);
+// Require login for all simulation routes
+router.use(authenticate);
 
-module.exports = router; 
+// Allow only admins or farm workers to simulate RFID scans
+router.post('/scan', authorize('admin', 'farm_worker'), simulationController.handleScan);
+
+module.exports = router;

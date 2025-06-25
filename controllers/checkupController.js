@@ -1,11 +1,11 @@
-const { Checkup, Animal } = require('../models');
+// controllers/checkupController.js (Mongoose version)
+const Checkup = require('../models/checkup');
+const Animal = require('../models/animal');
 
 // Get all checkups
 exports.getAllCheckups = async (req, res) => {
   try {
-    const checkups = await Checkup.findAll({
-      include: [{ model: Animal, as: 'animal' }]
-    });
+    const checkups = await Checkup.find().populate('animal_id');
     res.json(checkups);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -15,10 +15,7 @@ exports.getAllCheckups = async (req, res) => {
 // Get checkups by animal
 exports.getCheckupsByAnimal = async (req, res) => {
   try {
-    const checkups = await Checkup.findAll({
-      where: { animal_id: req.params.animalId },
-      include: [{ model: Animal, as: 'animal' }]
-    });
+    const checkups = await Checkup.find({ animal_id: req.params.animalId }).populate('animal_id');
     res.json(checkups);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -28,33 +25,19 @@ exports.getCheckupsByAnimal = async (req, res) => {
 // Create new checkup
 exports.createCheckup = async (req, res) => {
   try {
-    // Validate required fields
-    if (!req.body.animal_id || !req.body.date || !req.body.vet_name) {
+    const { animal_id, date, vet_name, notes, diagnosis } = req.body;
+
+    if (!animal_id || !date || !vet_name) {
       return res.status(400).json({ error: 'animal_id, date, and vet_name are required' });
     }
 
-    // Validate date format
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(req.body.date)) {
-      return res.status(400).json({ error: 'Date must be in YYYY-MM-DD format' });
-    }
-
-    // Validate vet_name length
-    if (req.body.vet_name.length > 255) {
-      return res.status(400).json({ error: 'Vet name must be 255 characters or less' });
-    }
-
-    // Validate notes length
-    if (req.body.notes && req.body.notes.length > 1000) {
-      return res.status(400).json({ error: 'Notes must be 1000 characters or less' });
-    }
-
-    // Verify animal exists
-    const animal = await Animal.findByPk(req.body.animal_id);
+    const animal = await Animal.findById(animal_id);
     if (!animal) {
       return res.status(404).json({ error: 'Animal not found' });
     }
 
-    const checkup = await Checkup.create(req.body);
+    const checkup = new Checkup({ animal_id, date, vet_name, notes, diagnosis });
+    await checkup.save();
     res.status(201).json(checkup);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -64,37 +47,21 @@ exports.createCheckup = async (req, res) => {
 // Update checkup
 exports.updateCheckup = async (req, res) => {
   try {
-    // Validate date format if provided
-    if (req.body.date && !/^\d{4}-\d{2}-\d{2}$/.test(req.body.date)) {
-      return res.status(400).json({ error: 'Date must be in YYYY-MM-DD format' });
-    }
+    const updateData = req.body;
 
-    // Validate vet_name length if provided
-    if (req.body.vet_name && req.body.vet_name.length > 255) {
-      return res.status(400).json({ error: 'Vet name must be 255 characters or less' });
-    }
-
-    // Validate notes length if provided
-    if (req.body.notes && req.body.notes.length > 1000) {
-      return res.status(400).json({ error: 'Notes must be 1000 characters or less' });
-    }
-
-    // Verify animal exists if animal_id is provided
-    if (req.body.animal_id) {
-      const animal = await Animal.findByPk(req.body.animal_id);
+    if (updateData.animal_id) {
+      const animal = await Animal.findById(updateData.animal_id);
       if (!animal) {
         return res.status(404).json({ error: 'Animal not found' });
       }
     }
 
-    const [updated] = await Checkup.update(req.body, {
-      where: { id: req.params.id }
-    });
-    if (updated) {
-      const updatedCheckup = await Checkup.findByPk(req.params.id);
-      return res.status(200).json(updatedCheckup);
+    const checkup = await Checkup.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    if (!checkup) {
+      return res.status(404).json({ error: 'Checkup not found' });
     }
-    throw new Error('Checkup not found');
+
+    res.json(checkup);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -103,13 +70,11 @@ exports.updateCheckup = async (req, res) => {
 // Delete checkup
 exports.deleteCheckup = async (req, res) => {
   try {
-    const deleted = await Checkup.destroy({
-      where: { id: req.params.id }
-    });
-    if (deleted) {
-      return res.status(204).end();
+    const checkup = await Checkup.findByIdAndDelete(req.params.id);
+    if (!checkup) {
+      return res.status(404).json({ error: 'Checkup not found' });
     }
-    throw new Error('Checkup not found');
+    res.status(204).end();
   } catch (error) {
     res.status(400).json({ error: error.message });
   }

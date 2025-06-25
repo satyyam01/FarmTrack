@@ -25,21 +25,32 @@ import {
 } from "../components/ui/alert-dialog";
 
 // Helper function to group animals by type
+const animalTypes: AnimalType[] = ["Cow", "Goat", "Hen", "Horse", "Sheep"];
 const groupAnimalsByType = (animals: Animal[]) => {
   const grouped: Record<AnimalType, Animal[]> = {
     Cow: [],
     Goat: [],
-    Hen: []
+    Hen: [],
+    Horse: [],
+    Sheep: []
   };
-
   animals.forEach(animal => {
     if (animal.type in grouped) {
       grouped[animal.type as AnimalType].push(animal);
     }
   });
-
   return grouped;
 };
+
+// Helper to get user role from localStorage
+function getUserRole(): string | null {
+  try {
+    const user = JSON.parse(localStorage.getItem("user") || "null");
+    return user?.role || null;
+  } catch {
+    return null;
+  }
+}
 
 export function AnimalsPage() {
   const [animals, setAnimals] = useState<Animal[]>([]);
@@ -51,6 +62,7 @@ export function AnimalsPage() {
   const [editingAnimal, setEditingAnimal] = useState<Animal | undefined>(undefined);
   const [animalToDelete, setAnimalToDelete] = useState<Animal | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   // Fetch animals from API
   useEffect(() => {
@@ -69,6 +81,13 @@ export function AnimalsPage() {
     };
 
     fetchAnimals();
+  }, []);
+
+  // Get user role on component mount
+  useEffect(() => {
+    const role = getUserRole();
+    console.log('User role in AnimalsPage:', role);
+    setUserRole(role);
   }, []);
 
   // Filter animals based on type and search query
@@ -110,8 +129,12 @@ export function AnimalsPage() {
     if (!animalToDelete) return;
     
     try {
-      await animalApi.delete(animalToDelete.id.toString());
-      setAnimals(prev => prev.filter(animal => animal.id !== animalToDelete.id));
+      const animalId = (animalToDelete as any)._id || animalToDelete.id;
+      await animalApi.delete(animalId.toString());
+      setAnimals(prev => prev.filter(animal => {
+        const currentId = (animal as any)._id || animal.id;
+        return currentId !== animalId;
+      }));
       toast.success("Animal deleted successfully");
     } catch (error) {
       console.error("Error deleting animal:", error);
@@ -126,11 +149,13 @@ export function AnimalsPage() {
     try {
       if (editingAnimal) {
         // Update existing animal
-        const updatedAnimal = await animalApi.update(editingAnimal.id.toString(), data);
+        const animalId = (editingAnimal as any)._id || editingAnimal.id;
+        const updatedAnimal = await animalApi.update(animalId.toString(), data);
         setAnimals(prev => 
-          prev.map(animal => 
-            animal.id === editingAnimal.id ? updatedAnimal : animal
-          )
+          prev.map(animal => {
+            const currentId = (animal as any)._id || animal.id;
+            return currentId === animalId ? updatedAnimal : animal;
+          })
         );
         toast.success("Animal updated successfully");
       } else {
@@ -149,23 +174,21 @@ export function AnimalsPage() {
   // Render animal cards grouped by type
   const renderAnimalGroups = () => {
     const groupedAnimals = groupAnimalsByType(filteredAnimals);
-    const animalTypes: AnimalType[] = ["Cow", "Goat", "Hen"];
-
     return animalTypes.map(type => {
       const animalsOfType = groupedAnimals[type];
       if (selectedType !== "all" && selectedType !== type) return null;
       if (animalsOfType.length === 0) return null;
-
       return (
         <div key={type} className="space-y-4">
           <h2 className="text-2xl font-semibold">{type}s</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {animalsOfType.map(animal => (
               <AnimalCard 
-                key={animal.id} 
+                key={(animal as any)._id || animal.id} 
                 animal={animal} 
                 onEdit={handleEditAnimal}
                 onDelete={handleDeleteClick}
+                userRole={userRole}
               />
             ))}
           </div>
@@ -178,7 +201,9 @@ export function AnimalsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h1 className="text-3xl font-bold">Animals</h1>
-        <Button onClick={handleAddAnimal}>Add Animal</Button>
+        {userRole === 'admin' && (
+          <Button onClick={handleAddAnimal}>Add Animal</Button>
+        )}
       </div>
       
       <div className="flex flex-col sm:flex-row gap-4">
@@ -192,9 +217,9 @@ export function AnimalsPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="Cow">Cow</SelectItem>
-              <SelectItem value="Goat">Goat</SelectItem>
-              <SelectItem value="Hen">Hen</SelectItem>
+              {animalTypes.map(type => (
+                <SelectItem key={type} value={type}>{type}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

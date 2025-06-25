@@ -1,7 +1,19 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const mongoose = require('mongoose');
 require('dotenv').config();
+
+// Connect to MongoDB
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => {
+  console.log('✅ Connected to MongoDB');
+}).catch((err) => {
+  console.error('❌ MongoDB connection error:', err);
+});
+
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
@@ -27,7 +39,7 @@ app.use('/api/animals', animalRoutes);
 app.use('/api/yields', yieldRoutes);
 app.use('/api/medications', medicationRoutes);
 app.use('/api/checkups', checkupRoutes);
-app.use('/api/return-logs', returnLogRoutes);
+app.use('/api/returnlogs', returnLogRoutes);
 app.use('/api/simulate', simulationRoutes);
 
 // Error handling middleware

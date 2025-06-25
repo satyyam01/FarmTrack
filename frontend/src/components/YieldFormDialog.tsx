@@ -27,6 +27,16 @@ interface YieldFormDialogProps {
   onSubmit: (data: YieldFormData) => void;
 }
 
+// Helper to get today's date in local time (YYYY-MM-DD)
+function getTodayLocal(): string {
+  const now = new Date();
+  // Use local year, month, day (no offset)
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export function YieldFormDialog({
   open,
   onOpenChange,
@@ -35,7 +45,7 @@ export function YieldFormDialog({
   const [animals, setAnimals] = useState<Animal[]>([]);
   const [selectedAnimal, setSelectedAnimal] = useState<string>("");
   const [quantity, setQuantity] = useState<string>("");
-  const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState<string>(getTodayLocal());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -45,7 +55,7 @@ export function YieldFormDialog({
       // Reset form when dialog opens
       setSelectedAnimal("");
       setQuantity("");
-      setDate(new Date().toISOString().split('T')[0]);
+      setDate(getTodayLocal());
     }
   }, [open]);
 
@@ -77,7 +87,7 @@ export function YieldFormDialog({
       return;
     }
 
-    const selectedAnimalData = animals.find(a => a.id.toString() === selectedAnimal);
+    const selectedAnimalData = animals.find(a => a.id === selectedAnimal);
     if (!selectedAnimalData) {
       toast.error("Selected animal not found");
       return;
@@ -89,9 +99,9 @@ export function YieldFormDialog({
     setIsSubmitting(true);
     try {
       const formData: YieldFormData = {
-        animal_id: Number(selectedAnimal),
+        animal_id: selectedAnimal,
         quantity: Number(quantity),
-        date,
+        date: date,
         unit_type: unitType
       };
       console.log('Submitting form data:', formData);
@@ -121,7 +131,7 @@ export function YieldFormDialog({
               </SelectTrigger>
               <SelectContent>
                 {animals.map(animal => (
-                  <SelectItem key={animal.id} value={animal.id.toString()}>
+                  <SelectItem key={animal.id} value={animal.id}>
                     {animal.name} ({animal.tag_number})
                   </SelectItem>
                 ))}

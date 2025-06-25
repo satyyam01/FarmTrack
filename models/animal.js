@@ -1,75 +1,41 @@
-'use strict';
-const { Model } = require('sequelize');
+const mongoose = require('mongoose');
 
-module.exports = (sequelize, DataTypes) => {
-  class Animal extends Model {
-    static associate(models) {
-      // Define associations here
-      Animal.hasMany(models.Yield, { 
-        foreignKey: 'animal_id', 
-        as: 'yields',
-        onDelete: 'CASCADE'
-      });
-      Animal.hasMany(models.ReturnLog, { 
-        foreignKey: 'animal_id', 
-        as: 'return_logs',
-        onDelete: 'CASCADE'
-      });
-      Animal.hasMany(models.Medication, { 
-        foreignKey: 'animal_id', 
-        as: 'medications',
-        onDelete: 'CASCADE'
-      });
-      Animal.hasMany(models.Checkup, { 
-        foreignKey: 'animal_id', 
-        as: 'checkups',
-        onDelete: 'CASCADE'
-      });
-    }
-  }
-  Animal.init({
-    tag_number: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      unique: true,
-      validate: {
-        notEmpty: true
-      }
-    },
-    name: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        notEmpty: true
-      }
-    },
-    type: {
-      type: DataTypes.ENUM('Cow', 'Hen', 'Horse', 'Sheep', 'Goat'),
-      allowNull: false
-    },
-    age: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      validate: {
-        min: 0
-      }
-    },
-    gender: {
-      type: DataTypes.ENUM('Male', 'Female'),
-      allowNull: false
-    },
-    is_producing_yield: {
-      type: DataTypes.BOOLEAN,
-      allowNull: true,
-      defaultValue: false
-    }
-  }, {
-    sequelize,
-    modelName: 'Animal',
-    tableName: 'animals',
-    timestamps: true,
-    underscored: true
-  });
+const animalSchema = new mongoose.Schema({
+  tag_number: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  type: { type: String, enum: ['Cow', 'Hen', 'Horse', 'Sheep', 'Goat'], required: true },
+  age: { type: Number, required: true, min: 0 },
+  gender: { type: String, enum: ['Male', 'Female'], required: true },
+  is_producing_yield: { type: Boolean, default: false }
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
 
-  return Animal;
-};
+// 🔁 Virtual populate for yields
+animalSchema.virtual('yields', {
+  ref: 'Yield',
+  localField: '_id',
+  foreignField: 'animal_id'
+});
+
+animalSchema.virtual('medications', {
+  ref: 'Medication',
+  localField: '_id',
+  foreignField: 'animal_id'
+});
+
+animalSchema.virtual('checkups', {
+  ref: 'Checkup',
+  localField: '_id',
+  foreignField: 'animal_id'
+});
+
+animalSchema.virtual('return_logs', {
+  ref: 'ReturnLog',
+  localField: '_id',
+  foreignField: 'animal_id'
+});
+
+module.exports = mongoose.model('Animal', animalSchema);

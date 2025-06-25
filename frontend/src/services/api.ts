@@ -26,15 +26,15 @@ api.interceptors.request.use(
 // Helper function to transform API data to frontend format
 const transformApiToFrontend = (apiData: any): Animal => {
   return {
-    id: apiData.id,
+    id: apiData._id || apiData.id,
     name: apiData.name,
     tag_number: apiData.tag_number,
     age: apiData.age,
     gender: apiData.gender,
     type: apiData.type,
     is_producing_yield: apiData.is_producing_yield,
-    created_at: apiData.created_at,
-    updated_at: apiData.updated_at
+    created_at: apiData.createdAt || apiData.created_at,
+    updated_at: apiData.updatedAt || apiData.updated_at
   };
 };
 
