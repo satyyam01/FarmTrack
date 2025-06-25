@@ -1,4 +1,19 @@
-.qodo
-node_modules
-.env
+# Node dependencies
+node_modules/
+
+# Test output and coverage
+coverage/
 __tests__/
+
+# Local environment or configuration files
+config/
+.env
+
+# Utility scripts (optional)
+utils/
+
+# Qodo-specific or other IDE/project files
+.qodo
+
+# Legacy frontend folder
+ejs-frontend/

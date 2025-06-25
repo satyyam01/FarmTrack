@@ -17,17 +17,24 @@ export const yieldApi = {
     }
   },
 
-  getOverview: async (type?: YieldType) => {
-    try {
-      const params = new URLSearchParams();
-      if (type) params.append('type', type);
-      
-      const response = await api.get<YieldOverview>(`/yields/overview?${params.toString()}`);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching yield overview:', error);
-      throw error;
+  getOverview: async (type?: YieldType, startDate?: string, endDate?: string): Promise<YieldOverview> => {
+    const params = new URLSearchParams();
+    if (type) {
+      params.append('type', type);
     }
+    if (startDate) {
+      params.append('startDate', startDate);
+    }
+    if (endDate) {
+      params.append('endDate', endDate);
+    }
+
+    const queryString = params.toString();
+    const url = `/yields/overview${queryString ? `?${queryString}` : ''}`;
+
+    console.log("Requesting Yield Overview URL:", url);
+    const response = await api.get<YieldOverview>(url);
+    return response.data;
   },
 
   create: async (data: YieldFormData) => {

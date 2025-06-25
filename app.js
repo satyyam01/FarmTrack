@@ -10,6 +10,7 @@ const yieldRoutes = require('./routes/yieldRoutes');
 const medicationRoutes = require('./routes/medicationRoutes');
 const checkupRoutes = require('./routes/checkupRoutes');
 const returnLogRoutes = require('./routes/returnLogRoutes');
+const simulationRoutes = require('./routes/simulationRoutes');
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use('/api/yields', yieldRoutes);
 app.use('/api/medications', medicationRoutes);
 app.use('/api/checkups', checkupRoutes);
 app.use('/api/return-logs', returnLogRoutes);
+app.use('/api/simulate', simulationRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
