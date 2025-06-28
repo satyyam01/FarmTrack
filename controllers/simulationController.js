@@ -32,11 +32,11 @@ exports.handleScan = async (req, res) => {
                 const today = format(new Date(), 'yyyy-MM-dd');
                 console.log(`Processing BARN_ENTRANCE for animal ${animal._id} on ${today}`);
 
-                // Try to find an existing return log for today
+                // Try to find an existing return log for today using string date
                 let returnLog = await ReturnLog.findOne({ 
                     animal_id: animal._id, 
                     farm_id: req.user.farm_id,
-                    date: { $gte: new Date(today), $lt: new Date(new Date(today).getTime() + 24*60*60*1000) } 
+                    date: today
                 });
                 let created = false;
                 if (!returnLog) {

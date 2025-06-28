@@ -17,6 +17,7 @@ import { UserProvider } from "./contexts/UserContext"
 import { ProtectedRoute } from "./components/ProtectedRoute"
 import { AuthGuard } from "./components/AuthGuard"
 import { Toaster } from "sonner"
+import { FencingAlertsPage } from "./pages/FencingAlertsPage"
 
 function App() {
   return (
@@ -37,8 +38,10 @@ function App() {
             </AuthGuard>
           } />
           <Route path="/register" element={
-            <AuthGuard requireAuth={false}>
-              <FarmRegistrationPage />
+            <AuthGuard requireAuth={true}>
+              <ProtectedRoute requireAdmin={true}>
+                <FarmRegistrationPage />
+              </ProtectedRoute>
             </AuthGuard>
           } />
           
@@ -81,6 +84,11 @@ function App() {
               </ProtectedRoute>
             } />
             <Route path="profile-settings" element={<ProfileSettingsPage />} />
+            <Route path="fencing-alerts" element={
+              <ProtectedRoute requiredRole="admin,user">
+                <FencingAlertsPage />
+              </ProtectedRoute>
+            } />
           </Route>
           
           {/* 404 catch-all route - must be last */}

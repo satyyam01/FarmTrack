@@ -27,9 +27,6 @@ export function LandingPage() {
             <Link to="/login">
               <Button variant="ghost">Login</Button>
             </Link>
-            <Link to="/register">
-              <Button>Get Started</Button>
-            </Link>
           </div>
         </div>
       </header>
@@ -49,15 +46,10 @@ export function LandingPage() {
             and night returns. Built for modern farmers who demand efficiency and precision.
           </p>
           <div className="flex items-center justify-center gap-4">
-            <Link to="/register">
+            <Link to="/login?tab=signup">
               <Button size="lg" className="text-lg px-8 py-3">
                 Start Free Trial
                 <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <Link to="/login">
-              <Button variant="outline" size="lg" className="text-lg px-8 py-3">
-                Sign In
               </Button>
             </Link>
           </div>
@@ -256,18 +248,13 @@ export function LandingPage() {
           <p className="text-xl text-green-100 mb-8 max-w-2xl mx-auto">
             Join thousands of farmers who have already improved their operations with FarmTrack.
           </p>
-          <div className="flex items-center justify-center gap-4">
-            <Link to="/register">
-              <Button size="lg" variant="secondary" className="text-lg px-8 py-3">
-                Start Your Free Trial
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-            <Link to="/login">
-              <Button size="lg" variant="outline" className="text-lg px-8 py-3 border-white text-white hover:bg-white hover:text-green-600">
-                Sign In to Existing Account
-              </Button>
-            </Link>
+          <div className="text-center">
+            <h3 className="text-2xl font-bold text-white mb-4">
+              🚀 Supercharge Your Farm Today!
+            </h3>
+            <p className="text-lg text-green-100 max-w-xl mx-auto">
+              Experience the future of farm management with cutting-edge technology, real-time insights, and unparalleled efficiency. Join the revolution and take your farm operations to the next level!
+            </p>
           </div>
         </div>
       </section>

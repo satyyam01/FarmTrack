@@ -7,13 +7,14 @@ import { Badge } from "./ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
 import { useUser } from "@/contexts/UserContext"
 import { toast } from "sonner"
+import { NotificationBell } from "./NotificationBell"
 
 const navItems = [
-  { name: "Dashboard", path: "/dashboard" },
-  { name: "Animals", path: "/dashboard/animals" },
-  { name: "Health Records", path: "/dashboard/health" },
-  { name: "Yields", path: "/dashboard/yields" },
-  { name: "Night Returns", path: "/dashboard/night-returns" },
+  { name: "Overview", path: "/dashboard" },
+  { name: "Livestock", path: "/dashboard/animals" },
+  { name: "Vet Care", path: "/dashboard/health" },
+  { name: "Production", path: "/dashboard/yields" },
+  { name: "Night Check", path: "/dashboard/night-returns" },
 ]
 
 export function Navbar() {
@@ -45,21 +46,21 @@ export function Navbar() {
     // For veterinarians, only show relevant pages
     if (user.role === 'veterinarian') {
       return navItems.filter(item => 
-        ['Dashboard', 'Animals', 'Health Records'].includes(item.name)
+        ['Overview', 'Livestock', 'Vet Care'].includes(item.name)
       );
     }
     
     // For farm workers, show relevant pages including yields
     if (user.role === 'farm_worker') {
       return navItems.filter(item => 
-        ['Dashboard', 'Animals', 'Health Records', 'Yields', 'Night Returns'].includes(item.name)
+        ['Overview', 'Livestock', 'Vet Care', 'Production', 'Night Check'].includes(item.name)
       );
     }
     
     // For regular users, show all pages except simulation (read-only access)
     if (user.role === 'user') {
       return navItems.filter(item => 
-        ['Dashboard', 'Animals', 'Health Records', 'Yields', 'Night Returns', 'Returns'].includes(item.name)
+        ['Overview', 'Livestock', 'Vet Care', 'Production', 'Night Check'].includes(item.name)
       );
     }
     
@@ -100,7 +101,21 @@ export function Navbar() {
                 {item.name}
               </Link>
             ))}
-            {/* Simulation link only for admins */}
+            {/* Watchguard link for admin and user roles */}
+            {(user?.role === 'admin' || user?.role === 'user') && (
+              <Link
+                to="/dashboard/fencing-alerts"
+                className={cn(
+                  "px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1 transition-colors",
+                  location.pathname === "/dashboard/fencing-alerts"
+                    ? "bg-accent text-primary border border-primary"
+                    : "text-muted-foreground hover:text-primary hover:bg-accent"
+                )}
+              >
+                <span role="img" aria-label="watchguard"></span> Watchguard
+              </Link>
+            )}
+            {/* Simulator link only for admins */}
             {user?.role === 'admin' && (
               <Link
                 to="/dashboard/simulation"
@@ -111,7 +126,7 @@ export function Navbar() {
                     : "text-muted-foreground hover:text-primary hover:bg-accent"
                 )}
               >
-                <Cpu className="h-4 w-4" /> Simulation
+                <Cpu className="h-4 w-4" /> Simulator
               </Link>
             )}
           </div>
@@ -120,6 +135,11 @@ export function Navbar() {
         {/* Right: User info and actions - only show if user is authenticated */}
         {user && (
           <div className="flex items-center gap-2 ml-auto">
+            {/* Notification Bell - Only show for admin and user roles */}
+            {(user?.role === 'admin' || user?.role === 'user') && (
+              <NotificationBell />
+            )}
+            
             {/* User info - clickable dropdown */}
             {user?.name && (
               <Popover>

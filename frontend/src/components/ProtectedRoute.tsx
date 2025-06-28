@@ -48,6 +48,9 @@ export function ProtectedRoute({
       return <Navigate to="/dashboard" replace />;
     }
 
+    // Special case: Allow admin users without farms to access farm registration
+    // This is handled by the FarmRegistrationPage component itself
+
     // Check for farm owner requirement (admin with farm_id)
     if (requireFarmOwner && (user.role !== 'admin' || !user.farm_id)) {
       toast.error('Access denied. Farm owner privileges required.');

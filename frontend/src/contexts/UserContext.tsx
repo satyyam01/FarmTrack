@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { updateApiToken } from '@/services/api';
 
 interface User {
   id?: string;
@@ -13,6 +14,7 @@ interface UserContextType {
   user: User | null;
   setUser: (user: User | null) => void;
   updateUser: (updates: Partial<User>) => void;
+  setToken: (token: string) => void;
   logout: () => void;
   loading: boolean;
 }
@@ -26,9 +28,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const userStr = localStorage.getItem('user');
-      if (userStr) {
+      const token = localStorage.getItem('token');
+      
+      if (userStr && token) {
         const userData = JSON.parse(userStr);
         setUser(userData);
+        // Update API token when user is loaded
+        updateApiToken(token);
       }
     } catch (error) {
       console.error('Error parsing user data:', error);
@@ -45,14 +51,30 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const setToken = (token: string) => {
+    localStorage.setItem('token', token);
+    updateApiToken(token);
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem('user');
     localStorage.removeItem('token');
+    updateApiToken(null);
+  };
+
+  // Wrapper function to set user and save to localStorage
+  const setUserAndSave = (userData: User | null) => {
+    setUser(userData);
+    if (userData) {
+      localStorage.setItem('user', JSON.stringify(userData));
+    } else {
+      localStorage.removeItem('user');
+    }
   };
 
   return (
-    <UserContext.Provider value={{ user, setUser, updateUser, logout, loading }}>
+    <UserContext.Provider value={{ user, setUser: setUserAndSave, updateUser, setToken, logout, loading }}>
       {children}
     </UserContext.Provider>
   );

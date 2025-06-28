@@ -35,11 +35,13 @@ exports.authenticate = async (req, res, next) => {
     console.log('Final req.user farm_id:', req.user.farm_id);
     console.log('=== Auth Middleware Complete ===');
 
-    // 🚫 Enforce farm_id presence for non-admins
+    // 🚫 Enforce farm_id presence for non-admins only
     if (user.role !== 'admin' && !req.user.farm_id) {
       return res.status(403).json({ error: 'User does not belong to any farm' });
     }
 
+    // ✅ Allow admin users to proceed even without farm_id (for farm creation)
+    // Non-admin users must have farm_id to proceed
     next();
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {

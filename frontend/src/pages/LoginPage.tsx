@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -13,7 +13,8 @@ import { useUser } from "@/contexts/UserContext"
 
 export function LoginPage() {
   const navigate = useNavigate()
-  const { setUser } = useUser()
+  const [searchParams] = useSearchParams()
+  const { setUser, setToken } = useUser()
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -25,23 +26,32 @@ export function LoginPage() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
+  // Handle tab query parameter
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam === 'signup') {
+      setTab("signup")
+    }
+  }, [searchParams])
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setLoading(true)
     try {
       const { token, user } = await authApi.login(formData.email, formData.password)
-      localStorage.setItem("token", token)
-      localStorage.setItem("user", JSON.stringify(user))
       
-      // Update global user context
+      // Store token and user data
+      setToken(token)
       setUser(user)
       
-      // Check if admin user has a farm_id
+      // Redirect based on user role
       if (user.role === 'admin' && !user.farm_id) {
-        toast.info("Please complete your farm registration")
-        navigate("/register")
+        toast.success("Welcome! Please register your farm.")
+        // Use window.location.href to bypass AuthGuard redirect logic
+        window.location.href = "/register"
       } else {
+        toast.success("Login successful!")
         navigate("/dashboard")
       }
     } catch (err: any) {
@@ -56,12 +66,7 @@ export function LoginPage() {
     setError("")
     setLoading(true)
     try {
-      console.log("Starting registration process...")
-      console.log("Form data:", formData)
-      
       const { user } = await authApi.register(formData.name, formData.email, formData.password, formData.role, formData.farm_id)
-      
-      console.log("Registration successful, user:", user)
       
       // Clear any existing auth data
       localStorage.removeItem("token")
@@ -69,10 +74,31 @@ export function LoginPage() {
       
       // Handle different flows based on user role
       if (user.role === 'admin') {
-        console.log("Admin user detected, redirecting to farm registration")
-        // Admin users go to farm registration first
-        toast.success("Account created successfully! Please register your farm.")
-        navigate("/register")
+        console.log("Admin user detected, starting auto-login...")
+        // Auto-login admin users after registration
+        try {
+          const { token, user: loginUser } = await authApi.login(formData.email, formData.password)
+          console.log("Auto-login successful, token:", !!token, "user:", loginUser)
+          
+          setToken(token)
+          setUser(loginUser)
+          
+          console.log("Token and user set, navigating to /register...")
+          toast.success("Account created successfully! Please register your farm.")
+          // Use window.location.href to bypass AuthGuard redirect logic
+          window.location.href = "/register"
+        } catch (loginError: any) {
+          console.error("Auto-login failed:", loginError)
+          toast.success("Account created successfully! Please login to continue.")
+          setTab("login")
+          setFormData({ 
+            email: formData.email, 
+            password: "", 
+            name: "", 
+            role: "user", 
+            farm_id: "" 
+          })
+        }
       } else {
         console.log("Non-admin user detected, redirecting to login")
         // All other users (user, veterinarian, farm_worker) go directly to login

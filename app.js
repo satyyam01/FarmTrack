@@ -14,7 +14,6 @@ mongoose.connect(process.env.MONGODB_URI, {
   console.error('❌ MongoDB connection error:', err);
 });
 
-
 // Import routes
 const authRoutes = require('./routes/authRoutes');
 const animalRoutes = require('./routes/animalRoutes');
@@ -24,8 +23,22 @@ const checkupRoutes = require('./routes/checkupRoutes');
 const returnLogRoutes = require('./routes/returnLogRoutes');
 const simulationRoutes = require('./routes/simulationRoutes');
 const farmRoutes = require('./routes/farmRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+const alertRoutes = require('./routes/alertRoutes');
+const settingRoutes = require('./routes/settingRoutes');
+const { scheduleNightCheck } = require('./scheduler/nightCheckScheduler');
 
 const app = express();
+
+// Initialize scheduler after MongoDB connection
+mongoose.connection.once('open', () => {
+  console.log('🔄 Initializing night check scheduler...');
+  scheduleNightCheck().then(() => {
+    console.log('✅ Night check scheduler initialized');
+  }).catch((error) => {
+    console.error('❌ Failed to initialize night check scheduler:', error);
+  });
+});
 
 // Middleware
 app.use(cors({
@@ -43,6 +56,9 @@ app.use('/api/checkups', checkupRoutes);
 app.use('/api/returnlogs', returnLogRoutes);
 app.use('/api/simulate', simulationRoutes);
 app.use('/api/farms', farmRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/alerts', alertRoutes);
+app.use('/api/settings', settingRoutes);
 
 // 404 handler for all unmatched routes
 app.use((req, res, next) => {
@@ -59,7 +75,10 @@ app.use((req, res, next) => {
         '/api/checkups',
         '/api/returnlogs',
         '/api/simulate',
-        '/api/farms'
+        '/api/farms',
+        '/api/notifications',
+        '/api/alerts',
+        '/api/settings'
       ]
     });
   } else {

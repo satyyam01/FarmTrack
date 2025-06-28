@@ -47,10 +47,8 @@ exports.getReturnLogs = async (req, res) => {
 
     let whereClause = {};
     if (date) {
-      const start = new Date(date);
-      const end = new Date(date);
-      end.setHours(23, 59, 59, 999);
-      whereClause.date = { $gte: start, $lte: end };
+      // Use string date comparison for timezone consistency
+      whereClause.date = date;
     }
 
     const logs = await ReturnLog.find(whereClause).populate({

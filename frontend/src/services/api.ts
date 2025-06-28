@@ -11,6 +11,15 @@ const api = axios.create({
   },
 });
 
+// Function to update token in axios instance
+export const updateApiToken = (token: string | null) => {
+  if (token) {
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  } else {
+    delete api.defaults.headers.common['Authorization'];
+  }
+};
+
 // Add request interceptor to include auth token
 api.interceptors.request.use(
   (config) => {
@@ -28,7 +37,6 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response) {
-      // Server responded with error status
       const { status, data } = error.response;
       
       switch (status) {
@@ -36,14 +44,26 @@ api.interceptors.response.use(
           console.error('Resource not found:', data?.message || 'The requested resource was not found');
           break;
         case 401:
-          console.error('Unauthorized:', data?.error || 'Please login again');
-          // Optionally redirect to login
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
+          console.error('Unauthorized:', data?.error || 'Authentication required');
+          const currentPath = window.location.pathname;
+          if (!currentPath.includes('/farm-registration') && !currentPath.includes('/register')) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+          }
           break;
         case 403:
           console.error('Forbidden:', data?.error || 'You do not have permission to access this resource');
+          
+          // Handle specific case for admin users who need to register their farm
+          if (data?.error === 'Please register your farm first') {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            if (user.role === 'admin' && !user.farm_id) {
+              console.log('Admin user needs to register farm, redirecting to /register');
+              window.location.href = '/register';
+              return Promise.reject(error);
+            }
+          }
           break;
         case 500:
           console.error('Server error:', data?.error || 'Something went wrong on the server');
@@ -136,7 +156,18 @@ export const authApi = {
   },
 
   createFarm: async (name: string, location: string): Promise<{ message: string, farm: any, user: any, token?: string }> => {
+    console.log("=== API createFarm Debug ===")
+    console.log("Sending request to /farms")
+    console.log("Request data:", { name, location })
+    console.log("Current token:", localStorage.getItem('token'))
+    
     const response = await api.post('/farms', { name, location });
+    
+    console.log("API response received")
+    console.log("Response status:", response.status)
+    console.log("Response data:", response.data)
+    console.log("=== API createFarm Complete ===")
+    
     return response.data;
   },
 
@@ -219,6 +250,19 @@ export const returnLogApi = {
 
   getByAnimal: async (animalId: string): Promise<ReturnLog[]> => {
     const response = await api.get(`/returnlogs/animal/${animalId}`);
+    return response.data;
+  }
+};
+
+// Alert API Methods
+export const alertApi = {
+  triggerFencingAlert: async (tagNumber: string): Promise<{ message: string; notification: any }> => {
+    const response = await api.post('/alerts/fencing', { tag_number: tagNumber });
+    return response.data;
+  },
+
+  runBarnCheck: async (): Promise<{ message: string; alerts: any[] }> => {
+    const response = await api.get('/alerts/barn-check');
     return response.data;
   }
 };

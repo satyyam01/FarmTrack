@@ -2,12 +2,29 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { animalApi, returnLogApi, authApi } from "@/services/api";
 import { yieldApi } from "@/services/yieldApi";
+import { notificationApi, Notification } from "@/services/notificationApi";
+import { settingsApi } from "@/services/settingsApi";
 import { format } from "date-fns";
 import { Animal } from "@/types/animal";
 import { YieldOverview } from "@/types/yield";
 import { ReturnLog } from "@/services/api";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, AlertCircle, HeartPulse, LayoutGrid, MapPin, Building2 } from "lucide-react";
+import { 
+  CheckCircle, 
+  AlertCircle, 
+  HeartPulse, 
+  LayoutGrid, 
+  MapPin, 
+  Building2, 
+  Bell, 
+  ShieldAlert, 
+  Moon, 
+  Clock,
+  Users,
+  Activity,
+  TrendingUp,
+  AlertTriangle
+} from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
@@ -19,6 +36,9 @@ export function DashboardPage() {
   const [yields, setYields] = useState<YieldOverview | null>(null);
   const [returnLogs, setReturnLogs] = useState<ReturnLog[]>([]);
   const [farmInfo, setFarmInfo] = useState<any>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [nightCheckSchedule, setNightCheckSchedule] = useState("21:00");
+  const [isLoading, setIsLoading] = useState(true);
   
   // Use UserContext instead of localStorage
   const { user } = useUser();
@@ -26,22 +46,51 @@ export function DashboardPage() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        // Always fetch animals data
+        setIsLoading(true);
+        
+        // Fetch animals
         const animalsData = await animalApi.getAll();
         setAnimals(animalsData);
-
-        // Only fetch yield and return data for non-veterinarian roles
-        if (user?.role !== 'veterinarian') {
-          const [yieldsData, returnLogsData] = await Promise.all([
-            yieldApi.getOverview(),
-            returnLogApi.getByDate(format(new Date(), "yyyy-MM-dd"))
-          ]);
-          setYields(yieldsData);
-          setReturnLogs(returnLogsData);
+        
+        // Fetch return logs for today
+        const today = new Date().toISOString().split('T')[0];
+        const returnLogsData = await returnLogApi.getByDate(today);
+        setReturnLogs(returnLogsData);
+        
+        // Fetch yields for today
+        const yieldsData = await yieldApi.getOverview();
+        setYields(yieldsData);
+        
+        // Fetch notifications
+        const notificationsData = await notificationApi.getAll();
+        setNotifications(notificationsData);
+        
+        // Fetch night check schedule for admin
+        if (user?.role === 'admin') {
+          try {
+            const scheduleData = await settingsApi.getNightCheckSchedule();
+            setNightCheckSchedule(scheduleData.schedule);
+          } catch (error: any) {
+            // Handle specific case for admin users who need to register their farm
+            if (error?.response?.data?.error === 'Please register your farm first') {
+              console.log('Admin user needs to register farm, redirecting to /register');
+              window.location.href = '/register';
+              return;
+            }
+            console.error("Error fetching night check schedule:", error);
+          }
         }
-      } catch (error) {
+      } catch (error: any) {
+        // Handle specific case for admin users who need to register their farm
+        if (error?.response?.data?.error === 'Please register your farm first') {
+          console.log('Admin user needs to register farm, redirecting to /register');
+          window.location.href = '/register';
+          return;
+        }
         console.error("Error fetching dashboard data:", error);
         toast.error("Failed to load dashboard data");
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -101,7 +150,15 @@ export function DashboardPage() {
 
   const todayYields = calculateTotalsByType(yields?.daily);
 
-  if (!animals.length && !yields && !returnLogs.length) {
+  // Get recent notifications
+  const recentNotifications = notifications.slice(0, 3);
+  const unreadNotifications = notifications.filter(n => !n.isRead).length;
+
+  // Get fencing alerts
+  const fencingAlerts = notifications.filter(n => n.title === "Fencing Alert").slice(0, 3);
+  const nightReturnAlerts = notifications.filter(n => n.title === "Night Return Alert").slice(0, 3);
+
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background pt-2 pb-4 px-2">
         <div className="w-full max-w-3xl">
@@ -111,7 +168,7 @@ export function DashboardPage() {
                 <LayoutGrid className="h-12 w-12 text-green-600" />
               </div>
               <div className="space-y-2">
-                <h1 className="text-4xl font-bold tracking-tight text-gray-900">Dashboard</h1>
+                <h1 className="text-4xl font-bold tracking-tight text-gray-900">Overview</h1>
                 {farmInfo ? (
                   <div className="flex items-center justify-center gap-2 text-lg text-gray-600">
                     <Building2 className="h-5 w-5" />
@@ -158,7 +215,7 @@ export function DashboardPage() {
               <LayoutGrid className="h-12 w-12 text-green-600" />
             </div>
             <div className="space-y-2">
-              <h1 className="text-4xl font-bold tracking-tight text-gray-900">Dashboard</h1>
+              <h1 className="text-4xl font-bold tracking-tight text-gray-900">Overview</h1>
               {farmInfo ? (
                 <div className="flex items-center justify-center gap-2 text-lg text-gray-600">
                   <Building2 className="h-5 w-5" />
@@ -187,9 +244,9 @@ export function DashboardPage() {
             </div>
           </div>
           <div className="p-6 space-y-10">
-            {/* Animal Overview Section */}
+            {/* Quick Stats Section */}
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold">Animals Overview</h2>
+              <h2 className="text-xl font-semibold">Quick Stats</h2>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -215,9 +272,9 @@ export function DashboardPage() {
                     <p className="text-xs text-muted-foreground mt-1">
                       Checkups & Medications
                     </p>
-                    <Link to="/health">
+                    <Link to="/dashboard/health">
                       <Button variant="outline" size="sm" className="mt-3 w-full">
-                        View Health Records
+                        View Vet Care
                       </Button>
                     </Link>
                   </CardContent>
@@ -258,7 +315,7 @@ export function DashboardPage() {
 
                     <Card>
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Night Return Status</CardTitle>
+                        <CardTitle className="text-sm font-medium">Night Check Status</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-2xl font-bold">{returnStats.returnRate.toFixed(1)}%</div>
@@ -280,40 +337,160 @@ export function DashboardPage() {
               </div>
             </div>
 
-            {/* Farm ID Section for Admins */}
+            {/* Alerts & Notifications Section - Only for admin and user roles */}
+            {(user?.role === 'admin' || user?.role === 'user') && (
+              <div className="space-y-4">
+                <h2 className="text-xl font-semibold">Alerts & Notifications</h2>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {/* Recent Notifications */}
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Recent Notifications</CardTitle>
+                      <Bell className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{notifications.length}</div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {unreadNotifications} unread
+                      </p>
+                      {recentNotifications.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          {recentNotifications.map((notification) => (
+                            <div key={notification._id} className="text-xs p-2 bg-gray-50 rounded">
+                              <div className="font-medium">{notification.title}</div>
+                              <div className="text-gray-600 truncate">{notification.message}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Fencing Alerts */}
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Watchguard Alerts</CardTitle>
+                      <ShieldAlert className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{fencingAlerts.length}</div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Recent boundary alerts
+                      </p>
+                      {fencingAlerts.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          {fencingAlerts.map((alert) => (
+                            <div key={alert._id} className="text-xs p-2 bg-yellow-50 rounded border border-yellow-200">
+                              <div className="font-medium text-yellow-800">Fencing Alert</div>
+                              <div className="text-yellow-700 truncate">{alert.message}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <Link to="/dashboard/fencing-alerts">
+                        <Button variant="outline" size="sm" className="mt-3 w-full">
+                          View Watchguard
+                        </Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
+
+                  {/* Night Check Alerts */}
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Night Check Alerts</CardTitle>
+                      <Moon className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{nightReturnAlerts.length}</div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Missing animals alerts
+                      </p>
+                      {user?.role === 'admin' && (
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          Scheduled: {nightCheckSchedule}
+                        </div>
+                      )}
+                      {nightReturnAlerts.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          {nightReturnAlerts.map((alert) => (
+                            <div key={alert._id} className="text-xs p-2 bg-red-50 rounded border border-red-200">
+                              <div className="font-medium text-red-800">Night Return Alert</div>
+                              <div className="text-red-700 truncate">{alert.message}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <Link to="/dashboard/night-returns">
+                        <Button variant="outline" size="sm" className="mt-3 w-full">
+                          View Night Check
+                        </Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            )}
+
+            {/* Farm Management Section for Admins */}
             {user?.role === 'admin' && user?.farm_id && (
               <div className="space-y-4">
                 <h2 className="text-xl font-semibold">Farm Management</h2>
-                <Card className="border-blue-200 bg-blue-50">
-                  <CardHeader>
-                    <CardTitle className="text-blue-900">Farm ID</CardTitle>
-                    <CardDescription className="text-blue-700">
-                      Share this ID with users who want to join your farm
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-2">
-                      <code className="bg-white px-3 py-2 rounded border text-sm font-mono">
-                        {user.farm_id}
-                      </code>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          if (user?.farm_id) {
-                            navigator.clipboard.writeText(user.farm_id);
-                          }
-                          toast.success("Farm ID copied to clipboard!");
-                        }}
-                      >
-                        Copy
-                      </Button>
-                    </div>
-                    <p className="text-xs text-blue-600 mt-2">
-                      Users can register with this farm ID to join your farm
-                    </p>
-                  </CardContent>
-                </Card>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Card className="border-blue-200 bg-blue-50">
+                    <CardHeader>
+                      <CardTitle className="text-blue-900">Farm ID</CardTitle>
+                      <CardDescription className="text-blue-700">
+                        Share this ID with users who want to join your farm
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-2">
+                        <code className="bg-white px-3 py-2 rounded border text-sm font-mono">
+                          {user.farm_id}
+                        </code>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            if (user?.farm_id) {
+                              navigator.clipboard.writeText(user.farm_id);
+                            }
+                            toast.success("Farm ID copied to clipboard!");
+                          }}
+                        >
+                          Copy
+                        </Button>
+                      </div>
+                      <p className="text-xs text-blue-600 mt-2">
+                        Users can register with this farm ID to join your farm
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-green-200 bg-green-50">
+                    <CardHeader>
+                      <CardTitle className="text-green-900">Night Check Schedule</CardTitle>
+                      <CardDescription className="text-green-700">
+                        Automated night return monitoring
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-5 w-5 text-green-700" />
+                        <span className="text-lg font-semibold text-green-800">{nightCheckSchedule}</span>
+                      </div>
+                      <p className="text-xs text-green-600 mt-2">
+                        Automatic checks run daily at this time
+                      </p>
+                      <Link to="/dashboard/night-returns">
+                        <Button variant="outline" size="sm" className="mt-3 w-full">
+                          Manage Schedule
+                        </Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
             )}
 
@@ -411,6 +588,72 @@ export function DashboardPage() {
                 </div>
               </div>
             )}
+
+            {/* Quick Actions Section */}
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold">Quick Actions</h2>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Link to="/dashboard/animals">
+                  <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3">
+                        <Activity className="h-8 w-8 text-blue-600" />
+                        <div>
+                          <div className="font-semibold">Manage Livestock</div>
+                          <div className="text-sm text-muted-foreground">Add, edit, view animals</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+
+                <Link to="/dashboard/health">
+                  <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3">
+                        <HeartPulse className="h-8 w-8 text-red-600" />
+                        <div>
+                          <div className="font-semibold">Vet Care</div>
+                          <div className="text-sm text-muted-foreground">Health records & medications</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+
+                {user?.role !== 'veterinarian' && (
+                  <>
+                    <Link to="/dashboard/yields">
+                      <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3">
+                            <TrendingUp className="h-8 w-8 text-green-600" />
+                            <div>
+                              <div className="font-semibold">Production</div>
+                              <div className="text-sm text-muted-foreground">Track yields & output</div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+
+                    <Link to="/dashboard/night-returns">
+                      <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3">
+                            <Moon className="h-8 w-8 text-purple-600" />
+                            <div>
+                              <div className="font-semibold">Night Check</div>
+                              <div className="text-sm text-muted-foreground">Monitor returns</div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

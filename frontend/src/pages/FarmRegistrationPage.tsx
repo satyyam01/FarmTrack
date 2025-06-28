@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,8 +10,10 @@ import { toast } from "sonner"
 import { useUser } from "@/contexts/UserContext"
 
 export function FarmRegistrationPage() {
+  console.log("=== FarmRegistrationPage Component Rendered ===")
+  
   const navigate = useNavigate()
-  const { setUser } = useUser()
+  const { setUser, setToken } = useUser()
   const [formData, setFormData] = useState({
     name: "",
     location: ""
@@ -19,49 +21,106 @@ export function FarmRegistrationPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
 
+  // Check authentication and permissions on component mount
+  useEffect(() => {
+    console.log("=== Farm Registration Auth Check ===")
+    const token = localStorage.getItem("token")
+    const user = localStorage.getItem("user")
+    
+    console.log("Token exists:", !!token)
+    console.log("User exists:", !!user)
+    
+    if (!token || !user) {
+      console.log("No token or user, redirecting to login")
+      toast.error("Please login to create a farm")
+      navigate("/login")
+      return
+    }
+    
+    try {
+      const userData = JSON.parse(user)
+      console.log("User data:", userData)
+      
+      if (userData.role !== 'admin') {
+        console.log("Non-admin user, redirecting to dashboard")
+        toast.error("Only farm owners can create farms")
+        navigate("/dashboard")
+        return
+      }
+      
+      // Check if admin already has a farm
+      if (userData.farm_id) {
+        console.log("Admin already has farm, redirecting to dashboard")
+        toast.info("You already have a farm registered")
+        navigate("/dashboard")
+        return
+      }
+      
+      console.log("Admin user authenticated without farm, ready for farm creation")
+    } catch (error) {
+      console.error("Error parsing user data:", error)
+      toast.error("Invalid user data, please login again")
+      navigate("/login")
+    }
+  }, [navigate])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setLoading(true)
 
     try {
+      console.log("=== Farm Registration Debug ===")
+      console.log("Current token in localStorage:", localStorage.getItem("token"))
+      console.log("Current user in localStorage:", localStorage.getItem("user"))
       console.log("Starting farm creation process...")
+      
+      // Clear any existing error state
+      setError("")
+      
       const response = await authApi.createFarm(formData.name, formData.location)
       
       console.log("Farm created successfully, response:", response)
+      console.log("New token received:", response.token ? "YES" : "NO")
       
-      // ✅ Store the new token and user data
-      if (response.token) {
-        localStorage.setItem("token", response.token)
-        localStorage.setItem("user", JSON.stringify(response.user))
-        
-        // Update global user context
+      // Update user data and token if provided
+      if (response.user) {
         setUser(response.user)
+      }
+      
+      // Update token if provided
+      if (response.token) {
+        setToken(response.token)
+      }
+      
+      console.log("New token stored, redirecting to dashboard")
+      toast.success("Farm created successfully!")
+      navigate("/dashboard")
+    } catch (err: any) {
+      console.error("=== Farm Registration Error ===")
+      console.error("Error details:", err)
+      console.error("Error response:", err?.response?.data)
+      console.error("Error status:", err?.response?.status)
+      
+      // Handle specific error cases
+      if (err?.response?.status === 401) {
+        const errorMessage = "Your session has expired. Please login again."
+        setError(errorMessage)
+        toast.error(errorMessage)
         
-        console.log("New token stored, redirecting to dashboard")
-        toast.success("Farm created successfully! Welcome to your farm.")
-        
-        // Redirect to dashboard
-        navigate("/dashboard")
-      } else {
-        // Fallback to old behavior if no token returned
-        console.log("No token in response, redirecting to login")
+        // Clear invalid token and redirect to login
         localStorage.removeItem("token")
         localStorage.removeItem("user")
-        
-        toast.success("Farm created successfully! Please login to continue.")
+        setUser(null)
         
         setTimeout(() => {
-          toast.info("Please login with your email and password to access your farm.")
-        }, 1000)
-        
-        navigate("/login")
+          navigate("/login")
+        }, 2000)
+      } else {
+        const errorMessage = err?.response?.data?.error || "Failed to create farm"
+        setError(errorMessage)
+        toast.error(errorMessage)
       }
-    } catch (err: any) {
-      console.error("Farm creation error:", err)
-      const errorMessage = err?.response?.data?.error || "Failed to create farm"
-      setError(errorMessage)
-      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }

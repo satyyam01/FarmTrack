@@ -195,35 +195,68 @@ exports.deleteAccount = async (req, res) => {
     const Medication = require('../models/medication');
     const Checkup = require('../models/checkup');
     const ReturnLog = require('../models/returnLog');
+    const Notification = require('../models/notification');
+    const Setting = require('../models/setting');
+
+    console.log(`Starting account deletion for user: ${user.email} (Role: ${user.role}, Farm ID: ${user.farm_id})`);
 
     // Role-based cascading deletion logic
     if (user.role === 'admin' && user.farm_id) {
-      // Farm owner deletion - most destructive
-      console.log(`Deleting farm owner account: ${user.email} (Farm ID: ${user.farm_id})`);
+      // 🚨 FARM OWNER DELETION - Most destructive operation
+      console.log(`🗑️  Deleting farm owner account: ${user.email} (Farm ID: ${user.farm_id})`);
       
-      // 1. Delete all animals in the farm
+      // 1. Delete all notifications for the farm
+      await Notification.deleteMany({ farm_id: user.farm_id });
+      console.log(`🗑️  Deleted all notifications for farm ${user.farm_id}`);
+      
+      // 2. Delete all settings for the farm
+      await Setting.deleteMany({ farm_id: user.farm_id });
+      console.log(`🗑️  Deleted all settings for farm ${user.farm_id}`);
+      
+      // 3. Get all animals in the farm for cascading deletes
       const animals = await Animal.find({ farm_id: user.farm_id });
       const animalIds = animals.map(animal => animal._id);
+      console.log(`🗑️  Found ${animals.length} animals to delete`);
       
-      // 2. Delete all related data for these animals
+      // 4. Delete all related data for these animals
       await Yield.deleteMany({ animal_id: { $in: animalIds } });
+      console.log(`🗑️  Deleted all yields for ${animals.length} animals`);
+      
       await Medication.deleteMany({ animal_id: { $in: animalIds } });
+      console.log(`🗑️  Deleted all medications for ${animals.length} animals`);
+      
       await Checkup.deleteMany({ animal_id: { $in: animalIds } });
+      console.log(`🗑️  Deleted all checkups for ${animals.length} animals`);
+      
       await ReturnLog.deleteMany({ animal_id: { $in: animalIds } });
+      console.log(`🗑️  Deleted all return logs for ${animals.length} animals`);
       
-      // 3. Delete all animals
+      // 5. Delete all animals
       await Animal.deleteMany({ farm_id: user.farm_id });
+      console.log(`🗑️  Deleted ${animals.length} animals`);
       
-      // 4. Delete the farm
+      // 6. Delete any remaining farm-related records (orphaned data)
+      await Yield.deleteMany({ farm_id: user.farm_id });
+      await Medication.deleteMany({ farm_id: user.farm_id });
+      await Checkup.deleteMany({ farm_id: user.farm_id });
+      await ReturnLog.deleteMany({ farm_id: user.farm_id });
+      console.log(`🗑️  Deleted any remaining orphaned farm records`);
+      
+      // 7. Delete the farm
       await Farm.findByIdAndDelete(user.farm_id);
+      console.log(`🗑️  Deleted farm ${user.farm_id}`);
       
-      // 5. Delete all users associated with this farm
+      // 8. Delete all users associated with this farm
+      const farmUsers = await User.find({ farm_id: user.farm_id });
       await User.deleteMany({ farm_id: user.farm_id });
+      console.log(`🗑️  Deleted ${farmUsers.length} users associated with farm ${user.farm_id}`);
       
-      console.log(`Deleted farm ${user.farm_id} and all associated data`);
+      console.log(`✅ Successfully deleted farm ${user.farm_id} and all associated data`);
       
     } else if (user.role === 'admin' && !user.farm_id) {
-      // System admin deletion - check if they're the only admin
+      // 🔧 SYSTEM ADMIN DELETION - Check if they're the only admin
+      console.log(`🔧 Deleting system admin account: ${user.email}`);
+      
       const adminCount = await User.countDocuments({ role: 'admin' });
       if (adminCount <= 1) {
         return res.status(400).json({ 
@@ -231,22 +264,60 @@ exports.deleteAccount = async (req, res) => {
         });
       }
       
-      console.log(`Deleting system admin account: ${user.email}`);
-      // Only delete the user account, no cascading for system admins
+      // For system admins, only delete their account and notifications
+      await Notification.deleteMany({ user_id: userId });
+      console.log(`🗑️  Deleted all notifications for system admin ${user.email}`);
+      
+      console.log(`✅ Successfully deleted system admin account: ${user.email}`);
+      
+    } else if (user.role === 'veterinarian') {
+      // 🩺 VETERINARIAN DELETION - Delete their health records and notifications
+      console.log(`🩺 Deleting veterinarian account: ${user.email} (Farm ID: ${user.farm_id})`);
+      
+      // Delete notifications created by this veterinarian
+      await Notification.deleteMany({ user_id: userId });
+      console.log(`🗑️  Deleted all notifications for veterinarian ${user.email}`);
+      
+      // For veterinarians, we keep the health records they created but remove their user association
+      // This allows the farm to maintain medical history while removing the user
+      console.log(`ℹ️  Health records created by veterinarian ${user.email} will remain but show as "Unknown Veterinarian"`);
+      
+    } else if (user.role === 'farm_worker') {
+      // 👨‍🌾 FARM WORKER DELETION - Delete their activity records and notifications
+      console.log(`👨‍🌾 Deleting farm worker account: ${user.email} (Farm ID: ${user.farm_id})`);
+      
+      // Delete notifications created by this farm worker
+      await Notification.deleteMany({ user_id: userId });
+      console.log(`🗑️  Deleted all notifications for farm worker ${user.email}`);
+      
+      // For farm workers, we keep the activity records they created but remove their user association
+      // This allows the farm to maintain activity history while removing the user
+      console.log(`ℹ️  Activity records created by farm worker ${user.email} will remain but show as "Unknown Worker"`);
+      
+    } else if (user.role === 'user') {
+      // 👤 REGULAR USER DELETION - Delete their notifications only
+      console.log(`👤 Deleting regular user account: ${user.email} (Farm ID: ${user.farm_id})`);
+      
+      // Delete notifications created by this user
+      await Notification.deleteMany({ user_id: userId });
+      console.log(`🗑️  Deleted all notifications for user ${user.email}`);
+      
+      // For regular users, we only delete their account and notifications
+      // Any data they might have created will remain but show as "Unknown User"
+      console.log(`ℹ️  Any data created by user ${user.email} will remain but show as "Unknown User"`);
       
     } else {
-      // Regular user deletion (user, veterinarian, farm_worker)
-      console.log(`Deleting regular user account: ${user.email} (Role: ${user.role})`);
+      // 🚨 UNKNOWN ROLE - Safe deletion
+      console.log(`🚨 Deleting account with unknown role: ${user.email} (Role: ${user.role})`);
       
-      // For regular users, we only delete their account
-      // Any data they created will remain but will show as "Unknown User" or similar
-      // This is safer than cascading deletes for regular users
+      // Delete notifications created by this user
+      await Notification.deleteMany({ user_id: userId });
+      console.log(`🗑️  Deleted all notifications for user ${user.email}`);
     }
 
     // Finally, delete the user account
     await User.findByIdAndDelete(userId);
-    
-    console.log(`Successfully deleted user account: ${user.email}`);
+    console.log(`✅ Successfully deleted user account: ${user.email}`);
     
     res.json({ 
       message: 'Account deleted successfully',
@@ -254,12 +325,17 @@ exports.deleteAccount = async (req, res) => {
         id: user._id,
         email: user.email,
         name: user.name,
-        role: user.role
+        role: user.role,
+        farm_id: user.farm_id
+      },
+      cascadingActions: {
+        notificationsDeleted: true,
+        roleSpecificActions: user.role
       }
     });
     
   } catch (error) {
-    console.error('Error deleting account:', error);
+    console.error('❌ Error deleting account:', error);
     res.status(500).json({ error: 'Failed to delete account: ' + error.message });
   }
 };
