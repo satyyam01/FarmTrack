@@ -46,7 +46,7 @@ export function MedicationModal({ animal, isOpen, onClose, userRole }: Medicatio
     if (!animal) return;
     setLoading(true);
     try {
-      const data: Medication[] = await medicationApi.getByAnimal(animal.id);
+      const data: Medication[] = await medicationApi.getByAnimal(String(animal.id));
       setMedications(data);
     } catch (error) {
       console.error("Error fetching medications:", error);
@@ -85,7 +85,7 @@ export function MedicationModal({ animal, isOpen, onClose, userRole }: Medicatio
     try {
       const medicationToAdd: Omit<Medication, 'id' | 'createdAt' | 'updatedAt'> = {
           ...newMedication,
-          animal_id: animal.id,
+          animal_id: String(animal.id),
           start_date: newMedication.start_date || format(new Date(), 'yyyy-MM-dd'),
           end_date: newMedication.end_date || null
       };
@@ -111,6 +111,33 @@ export function MedicationModal({ animal, isOpen, onClose, userRole }: Medicatio
           const message = error.response?.data?.error || error.response?.data?.message || error.message;
           toast.error(`Failed to delete medication: ${message}`);
       }
+  }
+
+  const handleEndMedication = async (id: string) => {
+    if (!confirm("Are you sure you want to end this medication?")) return;
+    try {
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const medicationToUpdate = medications.find(m => (m as any)._id === id || m.id === id);
+      
+      if (!medicationToUpdate) {
+        toast.error("Medication not found");
+        return;
+      }
+
+      const updatedMedication = await medicationApi.update(id, {
+        ...medicationToUpdate,
+        end_date: today
+      });
+
+      setMedications(medications.map(m => 
+        (m as any)._id === id || m.id === id ? updatedMedication : m
+      ));
+      toast.success("Medication ended successfully");
+    } catch (error: any) {
+      console.error("Error ending medication:", error);
+      const message = error.response?.data?.error || error.response?.data?.message || error.message;
+      toast.error(`Failed to end medication: ${message}`);
+    }
   }
 
   const handleEditMedication = (medication: Medication) => {
@@ -281,19 +308,8 @@ export function MedicationModal({ animal, isOpen, onClose, userRole }: Medicatio
                         </div>
                         <div className="flex gap-2">
                           <Button 
-                            type="button" 
+                            type="submit" 
                             size="sm" 
-                            onClick={() => {
-                              console.log('Save button clicked!');
-                              console.log('About to call handleUpdateMedication');
-                              console.log('Current editingId:', editingId);
-                              console.log('Current editingMedication:', editingMedication);
-                              try {
-                                handleUpdateMedication();
-                              } catch (error) {
-                                console.error('Error in save button click:', error);
-                              }
-                            }}
                             className="bg-black hover:bg-gray-800 text-white"
                           >
                             <Save className="h-4 w-4 mr-1" />
@@ -312,7 +328,7 @@ export function MedicationModal({ animal, isOpen, onClose, userRole }: Medicatio
                         <p><strong>Dosage:</strong> {medication.dosage}</p>
                         <p><strong>Start:</strong> {format(new Date(medication.start_date), "PP")}</p>
                         <p><strong>End:</strong> {medication.end_date ? format(new Date(medication.end_date), "PP") : 'Ongoing'}</p>
-                        {userRole === 'admin' && (
+                        {(userRole === 'admin' || userRole === 'veterinarian') && (
                           <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Button 
                               variant="ghost" 
@@ -323,6 +339,18 @@ export function MedicationModal({ animal, isOpen, onClose, userRole }: Medicatio
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
+                            {(!medication.end_date || (medication.end_date && new Date(medication.end_date) >= new Date())) && (
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-6 w-6 text-orange-600"
+                                onClick={() => handleEndMedication((medication as any)._id || medication.id)}
+                                aria-label="End medication"
+                              >
+                                ✓
+                              </Button>
+                            )}
+                            {userRole === 'admin' && (
                             <Button 
                               variant="ghost" 
                               size="icon" 
@@ -332,6 +360,7 @@ export function MedicationModal({ animal, isOpen, onClose, userRole }: Medicatio
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
+                            )}
                           </div>
                         )}
                       </>
@@ -341,7 +370,7 @@ export function MedicationModal({ animal, isOpen, onClose, userRole }: Medicatio
         </div>
 
         {/* Add New Medication Form */}
-        {userRole === 'admin' && (
+        {(userRole === 'admin' || userRole === 'veterinarian') && (
         <form onSubmit={handleAddMedication} className="mt-6 space-y-4 border-t pt-4">
             <h3 className="text-lg font-semibold">Add New Medication</h3>
             <div>

@@ -22,8 +22,9 @@ import { YieldType, YieldPeriod, YieldOverview, YieldFormData, Yield } from "../
 import { yieldApi } from "../services/yieldApi";
 import { toast } from "sonner";
 import { YieldFormDialog } from "../components/YieldFormDialog";
-import { Calendar } from "../components/ui/calendar";
-import { format } from "date-fns";
+import { format, addDays, parseISO } from "date-fns";
+import { ChevronLeft, ChevronRight, BarChart3 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
 
 export interface YieldStats {
   total: number;
@@ -43,15 +44,17 @@ export function YieldsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayLocal());
+  const [search, setSearch] = useState("");
+  const [editingYield, setEditingYield] = useState<Yield | null>(null);
+  const [editQuantity, setEditQuantity] = useState<string>("");
+  const [isEditSubmitting, setIsEditSubmitting] = useState(false);
 
   useEffect(() => {
-    const dateStr = selectedDate ? formatDate(selectedDate) : getTodayLocal();
+    const dateStr = selectedDate || getTodayLocal();
     console.log('=== Date Selection Debug ===');
     console.log('selectedDate:', selectedDate);
     console.log('formatted dateStr:', dateStr);
-    console.log('selectedDate.toISOString():', selectedDate?.toISOString());
-    console.log('selectedDate.getTime():', selectedDate?.getTime());
     fetchOverview(dateStr, dateStr);
     // Get user role from localStorage
     try {
@@ -188,334 +191,462 @@ export function YieldsPage() {
   }
 
   // Helper to format date as YYYY-MM-DD (local timezone)
-  function formatDate(date: Date | undefined): string | undefined {
+  function formatDate(date: string | undefined): string | undefined {
     if (!date) return undefined;
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.split('-')[0];
+    const month = date.split('-')[1];
+    const day = date.split('-')[2];
     return `${year}-${month}-${day}`;
   }
 
+  // Helper to go to previous/next day
+  function goToPrevDay() {
+    setSelectedDate(prev => {
+      const prevDate = format(addDays(parseISO(prev), -1), 'yyyy-MM-dd');
+      return prevDate;
+    });
+  }
+  function goToNextDay() {
+    setSelectedDate(prev => {
+      const nextDate = format(addDays(parseISO(prev), 1), 'yyyy-MM-dd');
+      return nextDate;
+    });
+  }
+
+  const handleEditYield = (yieldEntry: Yield) => {
+    setEditingYield(yieldEntry);
+    setEditQuantity(yieldEntry.quantity.toString());
+  };
+
+  const handleEditSubmit = async () => {
+    if (!editingYield) return;
+    if (!editQuantity || isNaN(Number(editQuantity)) || Number(editQuantity) <= 0) {
+      toast.error("Please enter a valid quantity");
+      return;
+    }
+    setIsEditSubmitting(true);
+    try {
+      await yieldApi.update(editingYield.id, {
+        animal_id: editingYield.animal_id,
+        quantity: Number(editQuantity),
+        date: editingYield.date,
+        unit_type: editingYield.unit_type,
+      });
+      toast.success("Yield updated successfully");
+      setEditingYield(null);
+      setEditQuantity("");
+      fetchOverview(selectedDate ? formatDate(selectedDate) : undefined, selectedDate ? formatDate(selectedDate) : undefined);
+    } catch (error) {
+      toast.error("Failed to update yield");
+    } finally {
+      setIsEditSubmitting(false);
+    }
+  };
+
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px]">
-        <p className="text-red-500 mb-4">{error}</p>
-        <Button onClick={() => fetchOverview(selectedDate ? formatDate(selectedDate) : undefined, selectedDate ? formatDate(selectedDate) : undefined)}>Retry</Button>
+      <div className="min-h-screen flex items-center justify-center bg-background pt-2 pb-4 px-2">
+        <Card className="w-full max-w-3xl shadow-xl rounded-2xl border bg-white/90">
+          <CardHeader className="space-y-2 text-center border-b pb-4">
+            <div className="flex justify-center mb-2">
+              <BarChart3 className="h-10 w-10 text-green-600" />
+            </div>
+            <CardTitle className="text-3xl font-bold tracking-tight">Production Overview</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6 flex flex-col items-center">
+            <p className="text-red-500 mb-4">{error}</p>
+            <Button onClick={() => fetchOverview(selectedDate ? formatDate(selectedDate) : undefined, selectedDate ? formatDate(selectedDate) : undefined)}>Retry</Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p>Loading...</p>
+      <div className="min-h-screen flex items-center justify-center bg-background pt-2 pb-4 px-2">
+        <Card className="w-full max-w-3xl shadow-xl rounded-2xl border bg-white/90">
+          <CardHeader className="space-y-2 text-center border-b pb-4">
+            <div className="flex justify-center mb-2">
+              <BarChart3 className="h-10 w-10 text-green-600" />
+            </div>
+            <CardTitle className="text-3xl font-bold tracking-tight">Production Overview</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6 flex flex-col items-center">
+            <p>Loading...</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Production Yields Overview</h1>
-        <div className="flex gap-2">
-          {/* <Button variant="destructive" onClick={handleClearAll}>Clear All</Button> */}
-          {userRole === "admin" && (
-            <Button onClick={() => setIsDialogOpen(true)}>Add Yield</Button>
-          )}
-        </div>
-      </div>
-
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-        <div className="w-full sm:w-auto sm:min-w-[200px]">
-          <Select 
-            value={selectedType} 
-            onValueChange={(value) => setSelectedType(value as YieldType | "all")}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="Cow">Cow</SelectItem>
-              <SelectItem value="Goat">Goat</SelectItem>
-              <SelectItem value="Hen">Hen</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex flex-col gap-2">
-          <div className="flex gap-2 items-center">
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={setSelectedDate}
-              numberOfMonths={1}
-            />
-            <Button variant="outline" size="sm" onClick={() => setSelectedDate(new Date())}>
-              Today
-            </Button>
+    <div className="min-h-screen flex items-center justify-center bg-background pt-2 pb-4 px-2">
+      <Card className="w-full max-w-7xl shadow-xl rounded-2xl border bg-white/90">
+        <CardHeader className="space-y-2 text-center border-b pb-4">
+          <div className="flex justify-center mb-2">
+            <BarChart3 className="h-10 w-10 text-green-600" />
           </div>
-          <div className="text-sm text-muted-foreground">
-            {selectedDate
-              ? `Showing yields for ${format(selectedDate, 'yyyy-MM-dd')}`
-              : `Showing yields for today (${getTodayLocal()})`}
+          <CardTitle className="text-3xl font-bold tracking-tight">Production Overview</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6 space-y-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+            <div className="flex gap-2 items-center">
+              <Input
+                id="date-filter"
+                type="date"
+                value={selectedDate}
+                onChange={e => setSelectedDate(e.target.value)}
+                className="w-[160px]"
+              />
+              <Button variant="outline" size="icon" onClick={goToPrevDay} aria-label="Previous day">
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <Button variant="outline" size="icon" onClick={goToNextDay} aria-label="Next day">
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setSelectedDate(getTodayLocal())}>
+                Today
+              </Button>
+            </div>
+            <div className="flex gap-2">
+              {(userRole === "admin" || userRole === "farm_worker") && (
+                <Button onClick={() => setIsDialogOpen(true)}>Add Yield</Button>
+              )}
+            </div>
           </div>
-        </div>
-      </div>
 
-      <Tabs value={selectedPeriod} onValueChange={(value) => setSelectedPeriod(value as YieldPeriod)}>
-        <TabsList>
-          <TabsTrigger value="day">Daily</TabsTrigger>
-          <TabsTrigger value="week">Weekly</TabsTrigger>
-          <TabsTrigger value="month">Monthly</TabsTrigger>
-        </TabsList>
-        <TabsContent value="day">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Today's Cow Production</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <p>Loading...</p>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="text-2xl font-bold">
-                      {calculateTotalsByType(overview?.daily).cowMilk.toFixed(2)} Liters
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {overview?.daily.animalsByType.Cow || 0} cows producing
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          <Tabs value={selectedPeriod} onValueChange={(value) => setSelectedPeriod(value as YieldPeriod)}>
+            <TabsList>
+              <TabsTrigger value="day">Daily</TabsTrigger>
+              <TabsTrigger value="week">Weekly</TabsTrigger>
+              <TabsTrigger value="month">Monthly</TabsTrigger>
+            </TabsList>
+            <TabsContent value="day">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Today's Cow Production</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoading ? (
+                      <p>Loading...</p>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-2xl font-bold">
+                          {calculateTotalsByType(overview?.daily).cowMilk.toFixed(2)} Liters
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {overview?.daily.animalsByType.Cow || 0} cows producing
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Today's Goat Production</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <p>Loading...</p>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="text-2xl font-bold">
-                      {calculateTotalsByType(overview?.daily).goatMilk.toFixed(2)} Liters
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {overview?.daily.animalsByType.Goat || 0} goats producing
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Today's Goat Production</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoading ? (
+                      <p>Loading...</p>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-2xl font-bold">
+                          {calculateTotalsByType(overview?.daily).goatMilk.toFixed(2)} Liters
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {overview?.daily.animalsByType.Goat || 0} goats producing
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Today's Hen Production</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <p>Loading...</p>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="text-2xl font-bold">
-                      {calculateTotalsByType(overview?.daily).henEggs.toFixed(0)} Eggs
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {overview?.daily.animalsByType.Hen || 0} hens producing
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-        <TabsContent value="week">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Weekly Cow Production</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <p>Loading...</p>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="text-2xl font-bold">
-                      {calculateTotalsByType(overview?.weekly).cowMilk.toFixed(2)} Liters
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {overview?.weekly.animalsByType.Cow || 0} cows producing
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Today's Hen Production</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoading ? (
+                      <p>Loading...</p>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-2xl font-bold">
+                          {calculateTotalsByType(overview?.daily).henEggs.toFixed(0)} Eggs
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {overview?.daily.animalsByType.Hen || 0} hens producing
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+            <TabsContent value="week">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Weekly Cow Production</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoading ? (
+                      <p>Loading...</p>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-2xl font-bold">
+                          {calculateTotalsByType(overview?.weekly).cowMilk.toFixed(2)} Liters
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {overview?.weekly.animalsByType.Cow || 0} cows producing
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Weekly Goat Production</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <p>Loading...</p>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="text-2xl font-bold">
-                      {calculateTotalsByType(overview?.weekly).goatMilk.toFixed(2)} Liters
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {overview?.weekly.animalsByType.Goat || 0} goats producing
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Weekly Goat Production</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoading ? (
+                      <p>Loading...</p>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-2xl font-bold">
+                          {calculateTotalsByType(overview?.weekly).goatMilk.toFixed(2)} Liters
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {overview?.weekly.animalsByType.Goat || 0} goats producing
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Weekly Hen Production</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <p>Loading...</p>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="text-2xl font-bold">
-                      {calculateTotalsByType(overview?.weekly).henEggs.toFixed(0)} Eggs
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {overview?.weekly.animalsByType.Hen || 0} hens producing
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-        <TabsContent value="month">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Monthly Cow Production</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <p>Loading...</p>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="text-2xl font-bold">
-                      {calculateTotalsByType(overview?.monthly).cowMilk.toFixed(2)} Liters
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {overview?.monthly.animalsByType.Cow || 0} cows producing
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Weekly Hen Production</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoading ? (
+                      <p>Loading...</p>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-2xl font-bold">
+                          {calculateTotalsByType(overview?.weekly).henEggs.toFixed(0)} Eggs
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {overview?.weekly.animalsByType.Hen || 0} hens producing
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+            <TabsContent value="month">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Monthly Cow Production</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoading ? (
+                      <p>Loading...</p>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-2xl font-bold">
+                          {calculateTotalsByType(overview?.monthly).cowMilk.toFixed(2)} Liters
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {overview?.monthly.animalsByType.Cow || 0} cows producing
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Monthly Goat Production</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <p>Loading...</p>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="text-2xl font-bold">
-                      {calculateTotalsByType(overview?.monthly).goatMilk.toFixed(2)} Liters
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {overview?.monthly.animalsByType.Goat || 0} goats producing
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Monthly Goat Production</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoading ? (
+                      <p>Loading...</p>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-2xl font-bold">
+                          {calculateTotalsByType(overview?.monthly).goatMilk.toFixed(2)} Liters
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {overview?.monthly.animalsByType.Goat || 0} goats producing
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Monthly Hen Production</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <p>Loading...</p>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="text-2xl font-bold">
-                      {calculateTotalsByType(overview?.monthly).henEggs.toFixed(0)} Eggs
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {overview?.monthly.animalsByType.Hen || 0} hens producing
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Monthly Hen Production</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoading ? (
+                      <p>Loading...</p>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-2xl font-bold">
+                          {calculateTotalsByType(overview?.monthly).henEggs.toFixed(0)} Eggs
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {overview?.monthly.animalsByType.Hen || 0} hens producing
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+          </Tabs>
 
-      <div className="space-y-4">
-        <h2 className="text-2xl font-semibold">Today's Yield Entries</h2>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Animal Name</TableHead>
-              <TableHead>Tag ID</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Quantity</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center">Loading...</TableCell>
-              </TableRow>
-            ) : !overview?.daily.yields || overview.daily.yields.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center">No yields found</TableCell>
-              </TableRow>
-            ) : (
-              overview.daily.yields.map((yieldEntry) => (
-                <TableRow key={yieldEntry.id}>
-                  <TableCell>{yieldEntry.animal?.name}</TableCell>
-                  <TableCell>{yieldEntry.animal?.tag_number}</TableCell>
-                  <TableCell>{yieldEntry.animal?.type}</TableCell>
-                  <TableCell>
-                    {yieldEntry.quantity.toFixed(2)} {getYieldUnit(yieldEntry.animal?.type as YieldType)}
-                  </TableCell>
-                  <TableCell>{yieldEntry.date}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => {
-                        if (window.confirm('Are you sure you want to delete this yield entry?')) {
-                          handleDeleteYield(yieldEntry.id.toString());
-                        }
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  </TableCell>
+          <div className="space-y-4">
+            <h2 className="text-2xl font-semibold">Today's Yield Entries</h2>
+            <div className="flex flex-col sm:flex-row gap-2 items-center mb-2">
+              <Input
+                placeholder="Search by animal name, tag, or type"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="max-w-xs"
+              />
+              <Select 
+                value={selectedType} 
+                onValueChange={(value) => setSelectedType(value as YieldType | "all")}
+              >
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Filter by type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="Cow">Cow</SelectItem>
+                  <SelectItem value="Goat">Goat</SelectItem>
+                  <SelectItem value="Hen">Hen</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Animal Name</TableHead>
+                  <TableHead>Tag ID</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Quantity</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center">Loading...</TableCell>
+                  </TableRow>
+                ) : !overview?.daily.yields || overview.daily.yields.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center">No yields found</TableCell>
+                  </TableRow>
+                ) : (
+                  overview.daily.yields
+                    .filter(yieldEntry => {
+                      if (!search.trim()) return true;
+                      const lower = search.toLowerCase();
+                      return (
+                        (yieldEntry.animal?.name?.toLowerCase().includes(lower) || "") ||
+                        (yieldEntry.animal?.tag_number?.toLowerCase().includes(lower) || "") ||
+                        (yieldEntry.animal?.type?.toLowerCase().includes(lower) || "")
+                      );
+                    })
+                    .map((yieldEntry) => (
+                      <TableRow key={yieldEntry.id}>
+                        <TableCell>{yieldEntry.animal?.name}</TableCell>
+                        <TableCell>{yieldEntry.animal?.tag_number}</TableCell>
+                        <TableCell>{yieldEntry.animal?.type}</TableCell>
+                        <TableCell>
+                          {yieldEntry.quantity.toFixed(2)} {getYieldUnit(yieldEntry.animal?.type as YieldType)}
+                        </TableCell>
+                        <TableCell>{yieldEntry.date}</TableCell>
+                        <TableCell>
+                          {(userRole === "admin" || userRole === "farm_worker") && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => {
+                                if (window.confirm('Are you sure you want to delete this yield entry?')) {
+                                  handleDeleteYield(yieldEntry.id.toString());
+                                }
+                              }}
+                            >
+                              Delete
+                            </Button>
+                          )}
+                          {(userRole === "admin" || userRole === "farm_worker") && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="ml-2"
+                              onClick={() => handleEditYield(yieldEntry)}
+                            >
+                              Edit
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
 
-      <YieldFormDialog
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        onSubmit={handleAddYield}
-      />
+          <YieldFormDialog
+            open={isDialogOpen}
+            onOpenChange={setIsDialogOpen}
+            onSubmit={handleAddYield}
+          />
+
+          <Dialog open={!!editingYield} onOpenChange={open => { if (!open) setEditingYield(null); }}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit Yield</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Animal</label>
+                  <Input value={editingYield?.animal?.name + (editingYield?.animal?.tag_number ? ` (${editingYield.animal.tag_number})` : "")} disabled />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Date</label>
+                  <Input value={editingYield?.date} disabled />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Quantity</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={editQuantity}
+                    onChange={e => setEditQuantity(e.target.value)}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditingYield(null)} disabled={isEditSubmitting}>Cancel</Button>
+                <Button onClick={handleEditSubmit} disabled={isEditSubmitting}>Save</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </CardContent>
+      </Card>
     </div>
   );
 }

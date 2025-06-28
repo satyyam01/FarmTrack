@@ -23,6 +23,7 @@ const medicationRoutes = require('./routes/medicationRoutes');
 const checkupRoutes = require('./routes/checkupRoutes');
 const returnLogRoutes = require('./routes/returnLogRoutes');
 const simulationRoutes = require('./routes/simulationRoutes');
+const farmRoutes = require('./routes/farmRoutes');
 
 const app = express();
 
@@ -41,6 +42,34 @@ app.use('/api/medications', medicationRoutes);
 app.use('/api/checkups', checkupRoutes);
 app.use('/api/returnlogs', returnLogRoutes);
 app.use('/api/simulate', simulationRoutes);
+app.use('/api/farms', farmRoutes);
+
+// 404 handler for all unmatched routes
+app.use((req, res, next) => {
+  // Check if it's an API route
+  if (req.path.startsWith('/api/')) {
+    res.status(404).json({ 
+      error: 'API endpoint not found',
+      message: `The requested endpoint ${req.method} ${req.originalUrl} does not exist`,
+      availableEndpoints: [
+        '/api/auth',
+        '/api/animals', 
+        '/api/yields',
+        '/api/medications',
+        '/api/checkups',
+        '/api/returnlogs',
+        '/api/simulate',
+        '/api/farms'
+      ]
+    });
+  } else {
+    res.status(404).json({ 
+      error: 'Route not found',
+      message: `The requested route ${req.method} ${req.originalUrl} does not exist`,
+      note: 'This is a backend API server. For frontend routes, please use the React application.'
+    });
+  }
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {

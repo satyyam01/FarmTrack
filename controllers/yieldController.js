@@ -5,27 +5,42 @@ const { startOfDay, endOfDay, startOfWeek, startOfMonth, parseISO } = require('d
 // Get all yields
 exports.getAllYields = async (req, res) => {
   try {
-    const yields = await Yield.find().populate('animal_id');
+    const farmId = req.user.farm_id;
+
+    const yields = await Yield.find().populate({
+      path: 'animal_id',
+      match: { farm_id: farmId },
+    });
+
+    const filtered = yields.filter(y => y.animal_id !== null);
+    res.json(filtered);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+// Get yields by animal
+exports.getYieldsByAnimal = async (req, res) => {
+  try {
+    const farmId = req.user.farm_id;
+
+    const animal = await Animal.findOne({ _id: req.params.animalId, farm_id: farmId });
+    if (!animal) return res.status(404).json({ error: 'Animal not found or not in your farm' });
+
+    const yields = await Yield.find({ animal_id: animal._id }).populate('animal_id');
     res.json(yields);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-// Get yields by animal
-exports.getYieldsByAnimal = async (req, res) => {
-  try {
-    const yields = await Yield.find({ animal_id: req.params.animalId }).populate('animal_id');
-    res.json(yields);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
 
 // Create new yield
 exports.createYield = async (req, res) => {
   try {
     const { animal_id, quantity, unit_type, date } = req.body;
+    const farmId = req.user.farm_id;
 
     if (!animal_id || !quantity || !unit_type || !date) {
       return res.status(400).json({ error: 'animal_id, quantity, unit_type, and date are required' });
@@ -44,23 +59,30 @@ exports.createYield = async (req, res) => {
       return res.status(400).json({ error: 'unit_type must be one of: milk, egg' });
     }
 
-    const animal = await Animal.findById(animal_id);
+    const animal = await Animal.findOne({ _id: animal_id, farm_id: farmId });
     if (!animal) {
-      return res.status(404).json({ error: 'Animal not found' });
+      return res.status(404).json({ error: 'Animal not found or not in your farm' });
     }
 
-    const newYield = await Yield.create({ animal_id, quantity, unit_type, date });
-    const populatedYield = await Yield.findById(newYield._id).populate('animal_id');
-
-    res.status(201).json(populatedYield);
+    const newYield = await Yield.create({ animal_id, quantity, unit_type, date, farm_id: farmId });
+    const populated = await Yield.findById(newYield._id).populate('animal_id');
+    res.status(201).json(populated);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };
 
+
 // Update yield
 exports.updateYield = async (req, res) => {
   try {
+    const farmId = req.user.farm_id;
+
+    const existingYield = await Yield.findById(req.params.id).populate('animal_id');
+    if (!existingYield || !existingYield.animal_id || existingYield.animal_id.farm_id.toString() !== farmId.toString()) {
+      return res.status(403).json({ error: 'Unauthorized to update this yield record' });
+    }
+
     const { date, quantity, unit_type, animal_id } = req.body;
 
     if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -79,22 +101,23 @@ exports.updateYield = async (req, res) => {
     }
 
     if (animal_id) {
-      const animal = await Animal.findById(animal_id);
+      const animal = await Animal.findOne({ _id: animal_id, farm_id: farmId });
       if (!animal) {
-        return res.status(404).json({ error: 'Animal not found' });
+        return res.status(404).json({ error: 'Animal not found or not in your farm' });
       }
     }
 
-    const updatedYield = await Yield.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updatedYield) {
+    const updated = await Yield.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updated) {
       return res.status(404).json({ error: 'Yield not found' });
     }
 
-    res.json(updatedYield);
+    res.json(updated);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 };
+
 
 // Delete yield
 exports.deleteYield = async (req, res) => {
@@ -166,8 +189,44 @@ const calculateStats = (yields, allAnimals) => {
   return { total, yields: mappedYields, animalsByType };
 };
 
+const getMonday = (dateStr) => {
+  const d = new Date(dateStr);
+  const day = d.getDay();
+  // Clone date before mutation
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - day + (day === 0 ? -6 : 1));
+  return monday;
+};
+
+const getSunday = (dateStr) => {
+  const d = new Date(dateStr);
+  const day = d.getDay();
+  // Clone date before mutation
+  const sunday = new Date(d);
+  sunday.setDate(d.getDate() - day + 7);
+  return sunday;
+};
+
+const getFirstOfMonth = (dateStr) => {
+  const d = new Date(dateStr);
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+};
+
+const getLastOfMonth = (dateStr) => {
+  const d = new Date(dateStr);
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0);
+};
+
+function formatDateString(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // Overview
 exports.getOverview = async (req, res) => {
+  const farmId = req.user.farm_id;
   try {
     const { type, startDate, endDate } = req.query;
     
@@ -177,7 +236,7 @@ exports.getOverview = async (req, res) => {
     console.log('endDate type:', typeof endDate, 'value:', endDate);
 
     const animalQuery = type ? { type } : {};
-    const animals = await Animal.find(animalQuery);
+    const animals = await Animal.find({ ...animalQuery, farm_id: farmId });
     const animalIds = animals.map(a => a._id);
 
     if (animalIds.length === 0) {
@@ -190,9 +249,31 @@ exports.getOverview = async (req, res) => {
 
     // If date range is provided, filter by date strings
     if (startDate && endDate && startDate === endDate) {
-      // Exact match for single day
-      yieldFilter.date = startDate;
-      console.log('Using exact date match:', startDate);
+      // Use selected date as reference for week/month
+      const refDate = startDate;
+      const monday = formatDateString(getMonday(refDate));
+      const sunday = formatDateString(getSunday(refDate));
+      const firstOfMonth = formatDateString(getFirstOfMonth(refDate));
+      const lastOfMonth = formatDateString(getLastOfMonth(refDate));
+      // Daily yields: exact match
+      const dailyYields = await Yield.find({ ...yieldFilter, date: refDate }).populate('animal_id').sort({ date: -1 });
+      // Weekly yields: Monday to Sunday
+      const weeklyYields = await Yield.find({
+        ...yieldFilter,
+        date: { $gte: monday, $lte: sunday }
+      }).populate('animal_id').sort({ date: -1 });
+      // Monthly yields: first to last of month
+      const monthlyYields = await Yield.find({
+        ...yieldFilter,
+        date: { $gte: firstOfMonth, $lte: lastOfMonth }
+      }).populate('animal_id').sort({ date: -1 });
+      res.json({
+        daily: calculateStats(dailyYields, animals),
+        weekly: calculateStats(weeklyYields, animals),
+        monthly: calculateStats(monthlyYields, animals),
+        animals,
+      });
+      return;
     } else if (startDate || endDate) {
       yieldFilter.date = {};
       if (startDate) yieldFilter.date.$gte = startDate;
@@ -231,8 +312,12 @@ exports.getOverview = async (req, res) => {
 // Clear all
 exports.clearAll = async (req, res) => {
   try {
-    await Yield.deleteMany({});
-    res.json({ message: 'All yields cleared successfully' });
+    const farmId = req.user.farm_id;
+    const animals = await Animal.find({ farm_id: farmId });
+    const animalIds = animals.map(a => a._id);
+
+    await Yield.deleteMany({ animal_id: { $in: animalIds } });
+    res.json({ message: 'All yields from your farm cleared successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

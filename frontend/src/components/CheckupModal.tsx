@@ -47,7 +47,7 @@ export function CheckupModal({ animal, isOpen, onClose, userRole }: CheckupModal
     if (!animal) return;
     setLoading(true);
     try {
-      const data: Checkup[] = await checkupApi.getByAnimal(animal.id);
+      const data: Checkup[] = await checkupApi.getByAnimal(String(animal.id));
       console.log('API returned checkups:', JSON.stringify(data, null, 2));
       console.log('First checkup keys:', data.length > 0 ? Object.keys(data[0]) : 'No checkups');
       setCheckups(data);
@@ -82,7 +82,7 @@ export function CheckupModal({ animal, isOpen, onClose, userRole }: CheckupModal
     try {
       const checkupToAdd: Omit<Checkup, 'id' | 'createdAt' | 'updatedAt'> = {
         ...newCheckup,
-        animal_id: animal.id,
+        animal_id: String(animal.id),
         date: newCheckup.date || format(new Date(), 'yyyy-MM-dd'),
         notes: newCheckup.notes || undefined,
         diagnosis: newCheckup.diagnosis || undefined
@@ -343,7 +343,7 @@ export function CheckupModal({ animal, isOpen, onClose, userRole }: CheckupModal
         </div>
 
         {/* Add New Checkup Form */}
-        {userRole === 'admin' && (
+        {(userRole === 'admin' || userRole === 'veterinarian') && (
         <form onSubmit={handleAddCheckup} className="mt-6 space-y-4 border-t pt-4">
             <h3 className="text-lg font-semibold">Add New Checkup</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

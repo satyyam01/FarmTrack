@@ -22,6 +22,10 @@ const userSchema = new mongoose.Schema({
     enum: ['admin', 'user', 'veterinarian', 'farm_worker'],
     default: 'user'
   },
+  farm_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'farm'
+  },
   isActive: {
     type: Boolean,
     default: true
@@ -29,6 +33,7 @@ const userSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
 
 // Hash password before saving
 userSchema.pre('save', async function (next) {
@@ -43,4 +48,4 @@ userSchema.methods.validatePassword = async function (inputPassword) {
   return await bcrypt.compare(inputPassword, this.password);
 };
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = mongoose.model('user', userSchema);

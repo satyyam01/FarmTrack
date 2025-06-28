@@ -17,3 +17,6 @@ utils/
 
 # Legacy frontend folder
 ejs-frontend/
+
+# backup folder
+backup/

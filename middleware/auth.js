@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/user'); // Import the Mongoose model
+const User = require('../models/user');
 
-// JWT Authentication Middleware
+// ✅ JWT Authentication Middleware
 exports.authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -13,17 +13,25 @@ exports.authenticate = async (req, res, next) => {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Mongoose: Fetch user by _id and exclude password
+    // Fetch user and ensure active
     const user = await User.findById(decoded.id).select('-password');
-    if (!user) {
-      return res.status(401).json({ error: 'User not found' });
+    if (!user) return res.status(401).json({ error: 'User not found' });
+    if (!user.isActive) return res.status(401).json({ error: 'Account is deactivated' });
+
+    // ✅ Attach to req.user with fallback to decoded token (important for legacy tokens)
+    req.user = {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+      farm_id: decoded.farm_id || user.farm_id || null
+    };
+
+    // 🚫 Enforce farm_id presence for non-admins
+    if (user.role !== 'admin' && !req.user.farm_id) {
+      return res.status(403).json({ error: 'User does not belong to any farm' });
     }
 
-    if (!user.isActive) {
-      return res.status(401).json({ error: 'Account is deactivated' });
-    }
-
-    req.user = user; // Attach user to request
     next();
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
@@ -36,7 +44,7 @@ exports.authenticate = async (req, res, next) => {
   }
 };
 
-// Role-based Authorization Middleware
+// ✅ Role-based Authorization Middleware
 exports.authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {
@@ -46,4 +54,24 @@ exports.authorize = (...roles) => {
     }
     next();
   };
+};
+
+// ✅ Farm Owner Authorization Middleware
+exports.requireFarmOwner = async (req, res, next) => {
+  try {
+    // Check if user is admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin privileges required' });
+    }
+
+    // Check if user has a farm_id (is a farm owner)
+    if (!req.user.farm_id) {
+      return res.status(403).json({ error: 'Farm owner privileges required' });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Farm owner middleware error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 };
