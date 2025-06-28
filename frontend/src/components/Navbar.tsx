@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { Badge } from "./ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover"
 import { useUser } from "@/contexts/UserContext"
+import { toast } from "sonner"
 
 const navItems = [
   { name: "Dashboard", path: "/dashboard" },
@@ -33,6 +34,7 @@ export function Navbar() {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
     setUser(null)
+    toast.success("Logged out successfully")
     navigate('/login')
   }
 

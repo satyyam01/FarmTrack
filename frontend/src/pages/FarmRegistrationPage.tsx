@@ -7,9 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { authApi } from "@/services/api"
 import { Cpu } from "lucide-react"
 import { toast } from "sonner"
+import { useUser } from "@/contexts/UserContext"
 
 export function FarmRegistrationPage() {
   const navigate = useNavigate()
+  const { setUser } = useUser()
   const [formData, setFormData] = useState({
     name: "",
     location: ""
@@ -24,25 +26,37 @@ export function FarmRegistrationPage() {
 
     try {
       console.log("Starting farm creation process...")
-      await authApi.createFarm(formData.name, formData.location)
+      const response = await authApi.createFarm(formData.name, formData.location)
       
-      console.log("Farm created successfully, redirecting to login")
+      console.log("Farm created successfully, response:", response)
       
-      // Clear any existing auth data
-      localStorage.removeItem("token")
-      localStorage.removeItem("user")
-      
-      // Show success message and redirect to login
-      toast.success("Farm created successfully! Please login to continue.")
-      
-      // Show a more prominent alert
-      setTimeout(() => {
-        toast.info("Please login with your email and password to access your farm.")
-      }, 1000)
-      
-      // Redirect to login page
-      console.log("Navigating to login page...")
-      navigate("/login")
+      // ✅ Store the new token and user data
+      if (response.token) {
+        localStorage.setItem("token", response.token)
+        localStorage.setItem("user", JSON.stringify(response.user))
+        
+        // Update global user context
+        setUser(response.user)
+        
+        console.log("New token stored, redirecting to dashboard")
+        toast.success("Farm created successfully! Welcome to your farm.")
+        
+        // Redirect to dashboard
+        navigate("/dashboard")
+      } else {
+        // Fallback to old behavior if no token returned
+        console.log("No token in response, redirecting to login")
+        localStorage.removeItem("token")
+        localStorage.removeItem("user")
+        
+        toast.success("Farm created successfully! Please login to continue.")
+        
+        setTimeout(() => {
+          toast.info("Please login with your email and password to access your farm.")
+        }, 1000)
+        
+        navigate("/login")
+      }
     } catch (err: any) {
       console.error("Farm creation error:", err)
       const errorMessage = err?.response?.data?.error || "Failed to create farm"

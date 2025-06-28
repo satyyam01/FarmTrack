@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import checkupApi from "@/services/checkupApi";
 import { Animal } from "@/types/animal";
 import { Trash2, Edit, Save, X } from 'lucide-react'; // Import edit icons
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 // Interfaces (copied from HealthRecordPage for consistency, consider centralizing types)
 interface Checkup {
@@ -99,7 +100,6 @@ export function CheckupModal({ animal, isOpen, onClose, userRole }: CheckupModal
   };
 
   const handleDeleteCheckup = async (id: string) => {
-      if (!confirm("Are you sure you want to delete this checkup record?")) return;
       try {
           await checkupApi.delete(id);
           setCheckups(checkups.filter(c => (c as any)._id !== id && c.id !== id)); // Remove from local state
@@ -325,15 +325,35 @@ export function CheckupModal({ animal, isOpen, onClose, userRole }: CheckupModal
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-6 w-6 text-destructive"
-                          onClick={() => handleDeleteCheckup((checkup as any)._id || checkup.id)}
-                          aria-label="Delete checkup"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6 text-destructive"
+                              aria-label="Delete checkup"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Checkup</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete this checkup record? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => handleDeleteCheckup((checkup as any)._id || checkup.id)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     )}
                   </>

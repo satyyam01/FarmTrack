@@ -72,15 +72,11 @@ export function LoginPage() {
         console.log("Admin user detected, redirecting to farm registration")
         // Admin users go to farm registration first
         toast.success("Account created successfully! Please register your farm.")
-        // Fallback alert in case toast doesn't work
-        alert("Account created successfully! Please register your farm.")
         navigate("/register")
       } else {
         console.log("Non-admin user detected, redirecting to login")
         // All other users (user, veterinarian, farm_worker) go directly to login
         toast.success("Registration successful! Please login with your credentials to continue.")
-        // Fallback alert in case toast doesn't work
-        alert("Registration successful! Please login with your credentials to continue.")
         
         // Switch to login tab first
         setTab("login")

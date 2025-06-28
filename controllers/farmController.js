@@ -5,25 +5,41 @@ const Yield = require('../models/yield');
 const Medication = require('../models/medication');
 const Checkup = require('../models/checkup');
 const ReturnLog = require('../models/returnLog');
+const jwt = require('jsonwebtoken');
 
+// JWT generator
+const generateToken = (user) => {
+  return jwt.sign(
+    {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+      farm_id: user.farm_id
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: '24h' }
+  );
+};
+
+// Create farm (admin only)
 exports.createFarm = async (req, res) => {
   try {
-    console.log("Farm creation request received from user:", req.user.id, "role:", req.user.role)
+    console.log("Farm creation request received from user:", req.user.id, "role:", req.user.role);
     
-    // ✅ Only allow admins to create farms
+    // Only allow admins to create farms
     if (req.user.role !== 'admin') {
-      console.log("Non-admin user attempted to create farm")
-      return res.status(403).json({ error: 'Only admins can create farms' });
+      console.log("Non-admin user attempted to create farm");
+      return res.status(403).json({ error: 'Only farm owners can create farms' });
     }
 
     const { name, location } = req.body;
-    console.log("Creating farm:", { name, location })
 
+    // Validate input
     if (!name) {
       return res.status(400).json({ error: 'Farm name is required' });
     }
 
-    // ✅ Create the farm and link it to the admin
+    // Create the farm
     const farm = await Farm.create({
       name,
       location,
@@ -41,14 +57,18 @@ exports.createFarm = async (req, res) => {
 
     console.log("User updated with farm_id:", updatedUser.farm_id)
 
-    // ⚠️ Return updated user data and farm info (NO TOKEN)
+    // ✅ Generate new token with updated farm_id
+    const newToken = generateToken(updatedUser);
+
+    // ✅ Return new token and updated user data
     const response = {
-      message: 'Farm created successfully. Please re-login to get updated farm access.',
+      message: 'Farm created successfully!',
       farm,
-      user: updatedUser
+      user: updatedUser,
+      token: newToken
     };
     
-    console.log("Sending farm creation response (NO TOKEN):", response)
+    console.log("Sending farm creation response with new token:", response)
     res.status(201).json(response);
 
   } catch (error) {

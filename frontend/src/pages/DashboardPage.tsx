@@ -41,6 +41,7 @@ export function DashboardPage() {
         }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
+        toast.error("Failed to load dashboard data");
       }
     };
 
@@ -56,6 +57,7 @@ export function DashboardPage() {
           setFarmInfo(farmData);
         } catch (error) {
           console.error("Error fetching farm info:", error);
+          toast.error("Failed to load farm information");
         }
       }
     };

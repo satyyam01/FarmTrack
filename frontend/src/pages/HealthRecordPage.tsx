@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { Stethoscope } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 // Combined type for state
 interface AnimalWithCounts extends Animal {
@@ -278,7 +279,6 @@ export function HealthRecordPage() {
     }
   };
   const handleDeleteRecord = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this record?")) return;
     setEditLoading(true);
     try {
       await checkupApi.delete(id);
@@ -359,7 +359,6 @@ export function HealthRecordPage() {
     }
   };
   const handleDeleteMedication = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this medication record?")) return;
     setEditMedicationLoading(true);
     try {
       await medicationApi.delete(id);
@@ -696,16 +695,36 @@ export function HealthRecordPage() {
                                   ✎
                                 </Button>
                                 {user?.role === 'admin' && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 text-destructive"
-                                  onClick={() => handleDeleteMedication(medId)}
-                                  aria-label="Delete medication"
-                                  disabled={editMedicationLoading}
-                                >
-                                  🗑️
-                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 text-destructive"
+                                      aria-label="Delete medication"
+                                      disabled={editMedicationLoading}
+                                    >
+                                      🗑️
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete Medication</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to delete this medication record? This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction 
+                                        onClick={() => handleDeleteMedication(medId)}
+                                        className="bg-red-600 hover:bg-red-700"
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
                                 )}
                               </div>
                             )}
@@ -789,16 +808,36 @@ export function HealthRecordPage() {
                             >
                               ✎
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-destructive"
-                              onClick={() => handleDeleteRecord(record.id || record._id)}
-                              aria-label="Delete record"
-                              disabled={editLoading}
-                            >
-                              🗑️
-                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-destructive"
+                                  aria-label="Delete record"
+                                  disabled={editLoading}
+                                >
+                                  🗑️
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Record</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete this checkup record? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => handleDeleteRecord(record.id || record._id)}
+                                    className="bg-red-600 hover:bg-red-700"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         )}
                       </>
@@ -910,16 +949,36 @@ export function HealthRecordPage() {
                             ✎
                           </Button>
                           {user?.role === 'admin' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 text-destructive"
-                            onClick={() => handleDeleteMedication(medId)}
-                            aria-label="Delete medication"
-                            disabled={editMedicationLoading}
-                          >
-                            🗑️
-                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-destructive"
+                                aria-label="Delete medication"
+                                disabled={editMedicationLoading}
+                              >
+                                🗑️
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Medication</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete this medication record? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => handleDeleteMedication(medId)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                           )}
                         </div>
                       )}

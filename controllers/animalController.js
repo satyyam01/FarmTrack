@@ -37,11 +37,21 @@ exports.getAnimal = async (req, res) => {
 // POST create a new animal in the current user's farm
 exports.createAnimal = async (req, res) => {
   try {
+    console.log('=== Animal Creation Debug ===');
+    console.log('User data:', {
+      id: req.user.id,
+      email: req.user.email,
+      role: req.user.role,
+      farm_id: req.user.farm_id
+    });
+    console.log('Request body:', req.body);
+    
     const { yields, medications, checkups, return_logs, ...animalData } = req.body;
 
     const requiredFields = ['tag_number', 'name', 'type', 'age', 'gender'];
     for (let field of requiredFields) {
       if (!animalData[field]) {
+        console.log(`Missing required field: ${field}`);
         return res.status(400).json({ error: `Missing required field: ${field}` });
       }
     }
@@ -57,8 +67,12 @@ exports.createAnimal = async (req, res) => {
       return res.status(400).json({ error: 'Invalid gender' });
     }
 
+    console.log('Creating animal with farm_id:', req.user.farm_id);
+    
     // Include farm_id in animal creation
     const animal = await Animal.create({ ...animalData, farm_id: req.user.farm_id });
+    
+    console.log('Animal created successfully:', animal._id);
 
     // Create related records with farm_id
     if (yields?.length > 0) {
@@ -80,8 +94,18 @@ exports.createAnimal = async (req, res) => {
       .populate('checkups')
       .populate('return_logs');
 
+    console.log('=== Animal Creation Complete ===');
     res.status(201).json(fullAnimal);
   } catch (error) {
+    console.error('Animal creation error:', error);
+    
+    // Handle duplicate key error specifically
+    if (error.code === 11000 && error.keyPattern && error.keyPattern.tag_number) {
+      return res.status(400).json({ 
+        error: `Tag number ${error.keyValue.tag_number} already exists in your farm` 
+      });
+    }
+    
     res.status(500).json({ error: error.message });
   }
 };

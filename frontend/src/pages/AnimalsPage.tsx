@@ -148,11 +148,14 @@ export function AnimalsPage() {
   };
 
   const handleSubmitAnimal = async (data: AnimalFormData) => {
+    console.log('AnimalsPage handleSubmitAnimal called with data:', data);
     try {
       if (editingAnimal) {
+        console.log('Updating existing animal:', editingAnimal);
         // Update existing animal
         const animalId = (editingAnimal as any)._id || editingAnimal.id;
         const updatedAnimal = await animalApi.update(animalId.toString(), data);
+        console.log('Animal updated successfully:', updatedAnimal);
         setAnimals(prev => 
           prev.map(animal => {
             const currentId = (animal as any)._id || animal.id;
@@ -161,8 +164,10 @@ export function AnimalsPage() {
         );
         toast.success("Animal updated successfully");
       } else {
+        console.log('Creating new animal');
         // Create new animal
         const newAnimal = await animalApi.create(data);
+        console.log('Animal created successfully:', newAnimal);
         setAnimals(prev => [...prev, newAnimal]);
         toast.success("Animal added successfully");
       }

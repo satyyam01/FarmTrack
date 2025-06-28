@@ -34,7 +34,7 @@ const formSchema = z.object({
   age: z.coerce.number().min(0, "Age must be a positive number"),
   gender: z.enum(["Male", "Female"]),
   type: z.enum(["Cow", "Goat", "Hen", "Horse", "Sheep"]),
-  is_producing_yield: z.boolean().optional(),
+  is_producing_yield: z.boolean().default(false),
 });
 
 interface AnimalFormDialogProps {
@@ -86,20 +86,48 @@ export function AnimalFormDialog({
         is_producing_yield: false,
       });
     }
+    console.log('Form reset with values:', form.getValues());
   }, [animal, form]);
 
   const handleSubmit = (data: AnimalFormData) => {
-    onSubmit(data);
+    console.log('AnimalFormDialog handleSubmit called with data:', data);
+    console.log('Form is valid:', form.formState.isValid);
+    console.log('Form errors:', form.formState.errors);
+    
+    try {
+      // Ensure is_producing_yield is set for female animals
+      if (data.gender === 'Female' && data.is_producing_yield === undefined) {
+        data.is_producing_yield = false;
+      }
+      
+      onSubmit(data);
+      console.log('onSubmit called successfully');
+    } catch (error) {
+      console.error('Error in handleSubmit:', error);
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      console.log('Dialog onOpenChange called with:', newOpen);
+      if (!newOpen) {
+        // Only close if form is not being submitted
+        console.log('Attempting to close dialog');
+      }
+      onOpenChange(newOpen);
+    }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+          <form 
+            onSubmit={(e) => {
+              console.log('Form onSubmit event triggered');
+              form.handleSubmit(handleSubmit)(e);
+            }} 
+            className="space-y-4"
+          >
             <FormField
               control={form.control}
               name="name"
@@ -171,7 +199,10 @@ export function AnimalFormDialog({
                   <FormItem>
                     <FormLabel>Producing Yield</FormLabel>
                     <Select
-                      onValueChange={(value) => field.onChange(value === "true")}
+                      onValueChange={(value) => {
+                        console.log('is_producing_yield changed to:', value);
+                        field.onChange(value === "true");
+                      }}
                       value={field.value ? "true" : "false"}
                     >
                       <FormControl>
@@ -186,6 +217,15 @@ export function AnimalFormDialog({
                     </Select>
                     <FormMessage />
                   </FormItem>
+                )}
+              />
+            )}
+            {gender === "Male" && (
+              <FormField
+                control={form.control}
+                name="is_producing_yield"
+                render={({ field }) => (
+                  <input type="hidden" {...field} value="false" />
                 )}
               />
             )}
@@ -217,7 +257,14 @@ export function AnimalFormDialog({
               )}
             />
             <DialogFooter>
-              <Button type="submit">Save</Button>
+              <Button 
+                type="submit"
+                onClick={() => {
+                  console.log('Save button clicked');
+                }}
+              >
+                Save
+              </Button>
             </DialogFooter>
           </form>
         </Form>

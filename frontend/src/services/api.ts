@@ -135,7 +135,7 @@ export const authApi = {
     return response.data;
   },
 
-  createFarm: async (name: string, location: string): Promise<{ message: string, farm: any, user: any }> => {
+  createFarm: async (name: string, location: string): Promise<{ message: string, farm: any, user: any, token?: string }> => {
     const response = await api.post('/farms', { name, location });
     return response.data;
   },

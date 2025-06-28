@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const animalSchema = new mongoose.Schema(
   {
-    tag_number: { type: String, required: true, unique: true },
+    tag_number: { type: String, required: true },
     name: { type: String, required: true },
     type: {
       type: String,
@@ -25,6 +25,9 @@ const animalSchema = new mongoose.Schema(
     toObject: { virtuals: true },
   }
 );
+
+// Compound unique index for tag_number within each farm
+animalSchema.index({ tag_number: 1, farm_id: 1 }, { unique: true });
 
 // 🔁 Virtual populate for yields
 animalSchema.virtual("yields", {

@@ -18,14 +18,22 @@ exports.authenticate = async (req, res, next) => {
     if (!user) return res.status(401).json({ error: 'User not found' });
     if (!user.isActive) return res.status(401).json({ error: 'Account is deactivated' });
 
-    // ✅ Attach to req.user with fallback to decoded token (important for legacy tokens)
+    console.log('=== Auth Middleware Debug ===');
+    console.log('Decoded token farm_id:', decoded.farm_id);
+    console.log('Database user farm_id:', user.farm_id);
+    console.log('User role:', user.role);
+
+    // ✅ Attach to req.user with database values (always up-to-date)
     req.user = {
       id: user._id,
       email: user.email,
       role: user.role,
       name: user.name,
-      farm_id: decoded.farm_id || user.farm_id || null
+      farm_id: user.farm_id || null
     };
+
+    console.log('Final req.user farm_id:', req.user.farm_id);
+    console.log('=== Auth Middleware Complete ===');
 
     // 🚫 Enforce farm_id presence for non-admins
     if (user.role !== 'admin' && !req.user.farm_id) {

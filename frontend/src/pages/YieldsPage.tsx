@@ -25,6 +25,7 @@ import { YieldFormDialog } from "../components/YieldFormDialog";
 import { format, addDays, parseISO } from "date-fns";
 import { ChevronLeft, ChevronRight, BarChart3 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 export interface YieldStats {
   total: number;
@@ -579,17 +580,33 @@ export function YieldsPage() {
                         <TableCell>{yieldEntry.date}</TableCell>
                         <TableCell>
                           {(userRole === "admin" || userRole === "farm_worker") && (
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => {
-                                if (window.confirm('Are you sure you want to delete this yield entry?')) {
-                                  handleDeleteYield(yieldEntry.id.toString());
-                                }
-                              }}
-                            >
-                              Delete
-                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                >
+                                  Delete
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Yield Entry</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete this yield entry? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={() => handleDeleteYield(yieldEntry.id.toString())}
+                                    className="bg-red-600 hover:bg-red-700"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           )}
                           {(userRole === "admin" || userRole === "farm_worker") && (
                             <Button

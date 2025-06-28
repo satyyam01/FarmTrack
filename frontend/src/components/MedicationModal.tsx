@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import medicationApi from "@/services/medicationApi";
 import { Animal } from "@/types/animal";
 import { Trash2, Edit, Save, X } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 // Interfaces (copied/adapted)
 interface Medication {
@@ -101,7 +102,6 @@ export function MedicationModal({ animal, isOpen, onClose, userRole }: Medicatio
   };
 
   const handleDeleteMedication = async (id: string) => {
-      if (!confirm("Are you sure you want to delete this medication record?")) return;
       try {
           await medicationApi.delete(id);
           setMedications(medications.filter(m => (m as any)._id !== id && m.id !== id));
@@ -114,7 +114,6 @@ export function MedicationModal({ animal, isOpen, onClose, userRole }: Medicatio
   }
 
   const handleEndMedication = async (id: string) => {
-    if (!confirm("Are you sure you want to end this medication?")) return;
     try {
       const today = format(new Date(), 'yyyy-MM-dd');
       const medicationToUpdate = medications.find(m => (m as any)._id === id || m.id === id);
@@ -340,26 +339,66 @@ export function MedicationModal({ animal, isOpen, onClose, userRole }: Medicatio
                               <Edit className="h-4 w-4" />
                             </Button>
                             {(!medication.end_date || (medication.end_date && new Date(medication.end_date) >= new Date())) && (
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-6 w-6 text-orange-600"
-                                onClick={() => handleEndMedication((medication as any)._id || medication.id)}
-                                aria-label="End medication"
-                              >
-                                ✓
-                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-6 w-6 text-orange-600"
+                                    aria-label="End medication"
+                                  >
+                                    ✓
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>End Medication</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to end this medication? This will set the end date to today.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      onClick={() => handleEndMedication((medication as any)._id || medication.id)}
+                                      className="bg-orange-600 hover:bg-orange-700"
+                                    >
+                                      End Medication
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             )}
                             {userRole === 'admin' && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-6 w-6 text-destructive"
-                              onClick={() => handleDeleteMedication((medication as any)._id || medication.id)}
-                              aria-label="Delete medication"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-6 w-6 text-destructive"
+                                    aria-label="Delete medication"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Medication</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete this medication record? This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      onClick={() => handleDeleteMedication((medication as any)._id || medication.id)}
+                                      className="bg-red-600 hover:bg-red-700"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             )}
                           </div>
                         )}

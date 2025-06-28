@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { User, Mail, Save, Edit, X, Shield, ArrowLeft, Trash2, AlertTriangle, Building2, Users, Database } from "lucide-react";
+import { User, Mail, Save, Edit, X, Shield, ArrowLeft, Trash2, AlertTriangle, Building2, Database } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "@/services/api";
