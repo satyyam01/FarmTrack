@@ -41,7 +41,8 @@
     "start": "concurrently -k \"npm run backend\" \"npm run frontend\"",
     "start:clean": "npx kill-port 3000 5173 && concurrently -k \"npm run backend\" \"npm run frontend\"",
     "backend": "nodemon app.js",
-    "frontend": "cd frontend && npm run dev"
+    "frontend": "cd frontend && npm run dev",
+    "check-gitignore": "node scripts/check-gitignore.js"
   },
   "keywords": [],
   "author": "",

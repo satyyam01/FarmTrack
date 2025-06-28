@@ -45,7 +45,7 @@ exports.createAnimal = async (req, res) => {
       farm_id: req.user.farm_id
     });
     console.log('Request body:', req.body);
-    
+
     const { yields, medications, checkups, return_logs, ...animalData } = req.body;
 
     const requiredFields = ['tag_number', 'name', 'type', 'age', 'gender'];

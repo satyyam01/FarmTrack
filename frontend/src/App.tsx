@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
+import { BrowserRouter, Routes, Route } from "react-router-dom"
 import { LoginPage } from "./pages/LoginPage"
 import { FarmRegistrationPage } from "./pages/FarmRegistrationPage"
 import { DashboardLayout } from "./pages/DashboardLayout"
@@ -11,9 +11,11 @@ import { NightReturnTrackerPage } from "./pages/NightReturnTrackerPage"
 import { SimulationPage } from "./pages/SimulationPage"
 import { FarmSettingsPage } from "./pages/FarmSettingsPage"
 import { ProfileSettingsPage } from "./pages/ProfileSettingsPage"
+import { LandingPage } from "./pages/LandingPage"
 import NotFoundPage from "./pages/NotFoundPage"
 import { UserProvider } from "./contexts/UserContext"
 import { ProtectedRoute } from "./components/ProtectedRoute"
+import { AuthGuard } from "./components/AuthGuard"
 import { Toaster } from "sonner"
 
 function App() {
@@ -21,11 +23,32 @@ function App() {
     <UserProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<FarmRegistrationPage />} />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/" element={<DashboardLayout />}>
-            <Route path="dashboard" element={<DashboardPage />} />
+          {/* Landing page - redirects authenticated users to dashboard */}
+          <Route path="/" element={
+            <AuthGuard requireAuth={false}>
+              <LandingPage />
+            </AuthGuard>
+          } />
+          
+          {/* Public routes - no authentication required */}
+          <Route path="/login" element={
+            <AuthGuard requireAuth={false}>
+              <LoginPage />
+            </AuthGuard>
+          } />
+          <Route path="/register" element={
+            <AuthGuard requireAuth={false}>
+              <FarmRegistrationPage />
+            </AuthGuard>
+          } />
+          
+          {/* Protected dashboard routes */}
+          <Route path="/dashboard" element={
+            <AuthGuard requireAuth={true}>
+              <DashboardLayout />
+            </AuthGuard>
+          }>
+            <Route index element={<DashboardPage />} />
             <Route path="animals" element={<AnimalsPage />} />
             <Route path="health" element={
               <ProtectedRoute requiredRole="admin,farm_worker,veterinarian,user">
@@ -59,6 +82,7 @@ function App() {
             } />
             <Route path="profile-settings" element={<ProfileSettingsPage />} />
           </Route>
+          
           {/* 404 catch-all route - must be last */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

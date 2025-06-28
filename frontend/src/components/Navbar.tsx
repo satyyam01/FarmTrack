@@ -10,10 +10,10 @@ import { toast } from "sonner"
 
 const navItems = [
   { name: "Dashboard", path: "/dashboard" },
-  { name: "Animals", path: "/animals" },
-  { name: "Health Records", path: "/health" },
-  { name: "Yields", path: "/yields" },
-  { name: "Night Returns", path: "/night-returns" },
+  { name: "Animals", path: "/dashboard/animals" },
+  { name: "Health Records", path: "/dashboard/health" },
+  { name: "Yields", path: "/dashboard/yields" },
+  { name: "Night Returns", path: "/dashboard/night-returns" },
 ]
 
 export function Navbar() {
@@ -79,106 +79,112 @@ export function Navbar() {
     }>
       <div className="container flex h-16 items-center justify-between px-4">
         {/* Left: Logo/Brand */}
-        <Link to="/dashboard" className="flex items-center gap-2 text-xl font-bold tracking-tight text-primary mr-8">
+        <Link to={user ? "/dashboard" : "/"} className="flex items-center gap-2 text-xl font-bold tracking-tight text-primary mr-8">
           <span>FarmTrack</span>
         </Link>
-        {/* Center: Navigation Links */}
-        <div className="flex-1 flex items-center justify-center gap-2">
-          {filteredNavItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
-                "px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                location.pathname === item.path
-                  ? "bg-accent text-primary border border-primary"
-                  : "text-muted-foreground hover:text-primary hover:bg-accent"
-              )}
-            >
-              {item.name}
-            </Link>
-          ))}
-          {/* Simulation link only for admins */}
-          {user?.role === 'admin' && (
-            <Link
-              to="/simulation"
-              className={cn(
-                "px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1 transition-colors",
-                location.pathname === "/simulation"
-                  ? "bg-accent text-primary border border-primary"
-                  : "text-muted-foreground hover:text-primary hover:bg-accent"
-              )}
-            >
-              <Cpu className="h-4 w-4" /> Simulation
-            </Link>
-          )}
-        </div>
-        {/* Right: User info and actions */}
-        <div className="flex items-center gap-2 ml-auto">
-          {/* User info - clickable dropdown */}
-          {user?.name && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="flex items-center gap-2 px-2 py-1 h-auto rounded-md bg-muted/30 border border-muted/50 hover:bg-muted/50 transition-colors"
-                >
-                  <User className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-xs font-medium text-foreground truncate max-w-20">
-                    {user.name}
-                  </span>
-                  <Badge variant="secondary" className="text-xs px-1.5 py-0.5 h-5 capitalize">
-                    {user.role}
-                  </Badge>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-56 p-2" align="end">
-                <div className="space-y-1">
-                  {/* Menu options */}
-                  <div className="space-y-0.5">
-                    {user?.role === 'admin' && user?.farm_id && (
+        
+        {/* Center: Navigation Links - only show if user is authenticated */}
+        {user && (
+          <div className="flex-1 flex items-center justify-center gap-2">
+            {filteredNavItems.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={cn(
+                  "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  location.pathname === item.path
+                    ? "bg-accent text-primary border border-primary"
+                    : "text-muted-foreground hover:text-primary hover:bg-accent"
+                )}
+              >
+                {item.name}
+              </Link>
+            ))}
+            {/* Simulation link only for admins */}
+            {user?.role === 'admin' && (
+              <Link
+                to="/dashboard/simulation"
+                className={cn(
+                  "px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1 transition-colors",
+                  location.pathname === "/dashboard/simulation"
+                    ? "bg-accent text-primary border border-primary"
+                    : "text-muted-foreground hover:text-primary hover:bg-accent"
+                )}
+              >
+                <Cpu className="h-4 w-4" /> Simulation
+              </Link>
+            )}
+          </div>
+        )}
+        
+        {/* Right: User info and actions - only show if user is authenticated */}
+        {user && (
+          <div className="flex items-center gap-2 ml-auto">
+            {/* User info - clickable dropdown */}
+            {user?.name && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="flex items-center gap-2 px-2 py-1 h-auto rounded-md bg-muted/30 border border-muted/50 hover:bg-muted/50 transition-colors"
+                  >
+                    <User className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs font-medium text-foreground truncate max-w-20">
+                      {user.name}
+                    </span>
+                    <Badge variant="secondary" className="text-xs px-1.5 py-0.5 h-5 capitalize">
+                      {user.role}
+                    </Badge>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-2" align="end">
+                  <div className="space-y-1">
+                    {/* Menu options */}
+                    <div className="space-y-0.5">
+                      {user?.role === 'admin' && user?.farm_id && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-start gap-2 h-8"
+                          onClick={() => {
+                            navigate('/dashboard/farm-settings');
+                          }}
+                        >
+                          <Building2 className="h-3.5 w-3.5" />
+                          <span className="text-xs">Farm Settings</span>
+                        </Button>
+                      )}
+                      
                       <Button
                         variant="ghost"
                         size="sm"
                         className="w-full justify-start gap-2 h-8"
                         onClick={() => {
-                          navigate('/farm-settings');
+                          navigate('/dashboard/profile-settings');
                         }}
                       >
-                        <Building2 className="h-3.5 w-3.5" />
-                        <span className="text-xs">Farm Settings</span>
+                        <Settings className="h-3.5 w-3.5" />
+                        <span className="text-xs">Profile Settings</span>
                       </Button>
-                    )}
-                    
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full justify-start gap-2 h-8"
-                      onClick={() => {
-                        navigate('/profile-settings');
-                      }}
-                    >
-                      <Settings className="h-3.5 w-3.5" />
-                      <span className="text-xs">Profile Settings</span>
-                    </Button>
-                    
-                    <div className="border-t my-1" />
-                    
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full justify-start gap-2 h-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                      onClick={handleLogout}
-                    >
-                      <LogOut className="h-3.5 w-3.5" />
-                      <span className="text-xs">Logout</span>
-                    </Button>
+                      
+                      <div className="border-t my-1" />
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start gap-2 h-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={handleLogout}
+                      >
+                        <LogOut className="h-3.5 w-3.5" />
+                        <span className="text-xs">Logout</span>
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
-        </div>
+                </PopoverContent>
+              </Popover>
+            )}
+          </div>
+        )}
       </div>
     </nav>
   )
