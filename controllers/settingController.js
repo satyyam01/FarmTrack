@@ -1,5 +1,8 @@
 const Setting = require('../models/setting');
 const { updateSchedule } = require('../scheduler/nightCheckScheduler');
+const pendingEmailChanges = require('../utils/pendingEmailChanges');
+const { sendOTP, verifyOTP } = require('../utils/sendgridOTP');
+const User = require('../models/user');
 
 // Get all settings for a farm
 const getAllSettings = async (req, res) => {
@@ -168,10 +171,60 @@ const updateNightCheckSchedule = async (req, res) => {
   }
 };
 
+// Request OTP for email change
+const requestEmailChangeOTP = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { newEmail } = req.body;
+    if (!newEmail) return res.status(400).json({ error: 'New email required' });
+
+    // Check if email is already used
+    const existing = await User.findOne({ email: newEmail });
+    if (existing) return res.status(400).json({ error: 'Email already in use' });
+
+    // Generate and send OTP
+    await sendOTP(newEmail);
+    pendingEmailChanges.set(userId, {
+      newEmail,
+      expiresAt: Date.now() + 10 * 60 * 1000 // 10 min expiry
+    });
+    res.json({ message: 'OTP sent to new email. Please verify.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to send OTP' });
+  }
+};
+
+// Verify OTP and update email
+const verifyEmailChangeOTP = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { newEmail, otp } = req.body;
+    const pending = pendingEmailChanges.get(userId);
+    if (!pending || pending.newEmail !== newEmail) {
+      return res.status(400).json({ error: 'No pending email change for this user/email' });
+    }
+    if (Date.now() > pending.expiresAt) {
+      pendingEmailChanges.delete(userId);
+      return res.status(400).json({ error: 'OTP expired' });
+    }
+    // Use verifyOTP from sendgridOTP.js
+    const isValid = verifyOTP(newEmail, otp);
+    if (!isValid) return res.status(400).json({ error: 'Invalid OTP' });
+    // Update email in DB
+    await User.findByIdAndUpdate(userId, { email: newEmail });
+    pendingEmailChanges.delete(userId);
+    res.json({ message: 'Email updated successfully.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to verify OTP' });
+  }
+};
+
 module.exports = {
   getAllSettings,
   getSetting,
   updateSetting,
   getNightCheckSchedule,
-  updateNightCheckSchedule
+  updateNightCheckSchedule,
+  requestEmailChangeOTP,
+  verifyEmailChangeOTP
 }; 

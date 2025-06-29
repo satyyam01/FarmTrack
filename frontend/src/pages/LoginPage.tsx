@@ -10,6 +10,7 @@ import { Cpu } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 import { useUser } from "@/contexts/UserContext"
+import verificationApi from "@/services/verificationApi"
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -25,6 +26,11 @@ export function LoginPage() {
   const [tab, setTab] = useState("login")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [registrationStep, setRegistrationStep] = useState<'form' | 'otp' | 'success'>('form')
+  const [otp, setOtp] = useState("")
+  const [resendTimer, setResendTimer] = useState(60)
+  const [otpLoading, setOtpLoading] = useState(false)
+  const [otpError, setOtpError] = useState("")
 
   // Handle tab query parameter
   useEffect(() => {
@@ -33,6 +39,14 @@ export function LoginPage() {
       setTab("signup")
     }
   }, [searchParams])
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout
+    if (registrationStep === 'otp' && resendTimer > 0) {
+      timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000)
+    }
+    return () => clearTimeout(timer)
+  }, [registrationStep, resendTimer])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -61,86 +75,60 @@ export function LoginPage() {
     }
   }
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setLoading(true)
     try {
-      const { user } = await authApi.register(formData.name, formData.email, formData.password, formData.role, formData.farm_id)
-      
-      // Clear any existing auth data
-      localStorage.removeItem("token")
-      localStorage.removeItem("user")
-      
-      // Handle different flows based on user role
-      if (user.role === 'admin') {
-        console.log("Admin user detected, starting auto-login...")
-        // Auto-login admin users after registration
-        try {
-          const { token, user: loginUser } = await authApi.login(formData.email, formData.password)
-          console.log("Auto-login successful, token:", !!token, "user:", loginUser)
-          
-          setToken(token)
-          setUser(loginUser)
-          
-          console.log("Token and user set, navigating to /register...")
-          toast.success("Account created successfully! Please register your farm.")
-          // Use window.location.href to bypass AuthGuard redirect logic
-          window.location.href = "/register"
-        } catch (loginError: any) {
-          console.error("Auto-login failed:", loginError)
-          toast.success("Account created successfully! Please login to continue.")
-          setTab("login")
-          setFormData({ 
-            email: formData.email, 
-            password: "", 
-            name: "", 
-            role: "user", 
-            farm_id: "" 
-          })
-        }
-      } else {
-        console.log("Non-admin user detected, redirecting to login")
-        // All other users (user, veterinarian, farm_worker) go directly to login
-        toast.success("Registration successful! Please login with your credentials to continue.")
-        
-        // Switch to login tab first
-        setTab("login")
-        
-        // Clear form data except email
-        setFormData({ 
-          email: formData.email, 
-          password: "", 
-          name: "", 
-          role: "user", 
-          farm_id: "" 
-        })
-        
-        // Show a more prominent alert
-        setTimeout(() => {
-          toast.info("Please login with your email and password to access your account.")
-        }, 1000)
-        
-        // Force a page refresh to ensure clean state
-        setTimeout(() => {
-          console.log("Redirecting to login page...")
-          window.location.href = "/login"
-        }, 1500)
-      }
-      
+      await verificationApi.sendOTP(formData)
+      setRegistrationStep('otp')
+      setResendTimer(60)
+      toast.success("OTP sent to your email. Please verify to complete registration.")
     } catch (err: any) {
-      console.error("Registration error:", err)
-      console.error("Error response:", err?.response?.data)
-      
-      // Don't clear form data on error
-      const errorMessage = err?.response?.data?.error || "Registration failed"
+      const errorMessage = err?.response?.data?.error || "Failed to send OTP"
       setError(errorMessage)
       toast.error(errorMessage)
-      
-      // Keep the user on the signup tab
-      setTab("signup")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setOtpError("")
+    setOtpLoading(true)
+    try {
+      await verificationApi.verifyOTP({ email: formData.email, otp })
+      setRegistrationStep('success')
+      toast.success("Registration successful! Please login.")
+      setTimeout(() => {
+        setTab("login")
+        setRegistrationStep('form')
+        setFormData({ email: "", password: "", name: "", role: "user", farm_id: "" })
+        setOtp("")
+      }, 2000)
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.error || "OTP verification failed"
+      setOtpError(errorMessage)
+      toast.error(errorMessage)
+    } finally {
+      setOtpLoading(false)
+    }
+  }
+
+  const handleResendOtp = async () => {
+    setOtpError("")
+    setOtpLoading(true)
+    try {
+      await verificationApi.sendOTP(formData)
+      setResendTimer(60)
+      toast.success("OTP resent to your email.")
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.error || "Failed to resend OTP"
+      setOtpError(errorMessage)
+      toast.error(errorMessage)
+    } finally {
+      setOtpLoading(false)
     }
   }
 
@@ -195,80 +183,126 @@ export function LoginPage() {
               </form>
             </TabsContent>
             <TabsContent value="signup" className="space-y-6">
-              <form onSubmit={handleRegister} className="space-y-5">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    type="text"
-                    placeholder="Enter your full name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    placeholder="Enter your email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Password</Label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    placeholder="Create a password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-role">Role</Label>
-                  <Select
-                    value={formData.role}
-                    onValueChange={value => setFormData({ ...formData, role: value })}
-                  >
-                    <SelectTrigger id="signup-role" className="w-full">
-                      <SelectValue placeholder="Select a role" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-background">
-                      <SelectItem value="admin">Farm Owner</SelectItem>
-                      <SelectItem value="user">User</SelectItem>
-                      <SelectItem value="veterinarian">Veterinarian</SelectItem>
-                      <SelectItem value="farm_worker">Farm Worker</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {formData.role !== 'admin' && (
+              {registrationStep === 'form' && (
+                <form onSubmit={handleSendOtp} className="space-y-5">
                   <div className="space-y-2">
-                    <Label htmlFor="farm-id">Farm ID</Label>
+                    <Label htmlFor="name">Full Name</Label>
                     <Input
-                      id="farm-id"
+                      id="name"
                       type="text"
-                      placeholder="Enter farm ID"
-                      value={formData.farm_id}
-                      onChange={(e) => setFormData({ ...formData, farm_id: e.target.value })}
-                      required={formData.role !== 'admin'}
+                      placeholder="Enter your full name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      required
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Ask your farm admin for the farm ID to join their farm.
-                    </p>
                   </div>
-                )}
-                {error && tab === "signup" && (
-                  <div className="text-red-500 text-sm text-center font-medium">{error}</div>
-                )}
-                <Button type="submit" className="w-full text-base font-semibold" disabled={loading}>
-                  {loading ? "Creating Account..." : "Create Account"}
-                </Button>
-              </form>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">Email</Label>
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      placeholder="Enter your email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password">Password</Label>
+                    <Input
+                      id="signup-password"
+                      type="password"
+                      placeholder="Create a password"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-role">Role</Label>
+                    <Select
+                      value={formData.role}
+                      onValueChange={value => setFormData({ ...formData, role: value })}
+                    >
+                      <SelectTrigger id="signup-role" className="w-full">
+                        <SelectValue placeholder="Select a role" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background">
+                        <SelectItem value="admin">Farm Owner</SelectItem>
+                        <SelectItem value="user">User</SelectItem>
+                        <SelectItem value="veterinarian">Veterinarian</SelectItem>
+                        <SelectItem value="farm_worker">Farm Worker</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {formData.role !== 'admin' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="farm-id">Farm ID</Label>
+                      <Input
+                        id="farm-id"
+                        type="text"
+                        placeholder="Enter farm ID"
+                        value={formData.farm_id}
+                        onChange={(e) => setFormData({ ...formData, farm_id: e.target.value })}
+                        required={formData.role !== 'admin'}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Ask your farm admin for the farm ID to join their farm.
+                      </p>
+                    </div>
+                  )}
+                  {error && (
+                    <div className="text-red-500 text-sm text-center font-medium">{error}</div>
+                  )}
+                  <Button type="submit" className="w-full text-base font-semibold" disabled={loading}>
+                    {loading ? "Sending OTP..." : "Send OTP"}
+                  </Button>
+                </form>
+              )}
+              {registrationStep === 'otp' && (
+                <form onSubmit={handleVerifyOtp} className="space-y-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="otp">Enter OTP</Label>
+                    <Input
+                      id="otp"
+                      type="text"
+                      placeholder="Enter the OTP sent to your email"
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value)}
+                      required
+                    />
+                  </div>
+                  {otpError && (
+                    <div className="text-red-500 text-sm text-center font-medium">{otpError}</div>
+                  )}
+                  <Button type="submit" className="w-full text-base font-semibold" disabled={otpLoading}>
+                    {otpLoading ? "Verifying..." : "Verify OTP"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full text-base font-semibold"
+                    onClick={handleResendOtp}
+                    disabled={resendTimer > 0 || otpLoading}
+                  >
+                    {resendTimer > 0 ? `Resend OTP (${resendTimer}s)` : "Resend OTP"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full text-base font-semibold"
+                    onClick={() => { setRegistrationStep('form'); setOtp(""); setOtpError(""); }}
+                    disabled={otpLoading}
+                  >
+                    Edit Registration Info
+                  </Button>
+                </form>
+              )}
+              {registrationStep === 'success' && (
+                <div className="text-center space-y-4">
+                  <div className="text-green-600 text-lg font-semibold">Registration successful! Please login.</div>
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </CardContent>

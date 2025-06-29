@@ -5,7 +5,9 @@ const {
   getSetting, 
   updateSetting, 
   getNightCheckSchedule, 
-  updateNightCheckSchedule 
+  updateNightCheckSchedule,
+  requestEmailChangeOTP,
+  verifyEmailChangeOTP
 } = require('../controllers/settingController');
 const { authenticate, authorize } = require('../middleware/auth');
 
@@ -21,5 +23,9 @@ router.put('/:key', authorize('admin'), updateSetting);
 // Anyone can read the schedule, but only admin can update it
 router.get('/night-check/schedule', getNightCheckSchedule);
 router.put('/night-check/schedule', authorize('admin'), updateNightCheckSchedule);
+
+// Email change OTP endpoints
+router.post('/request-email-change-otp', requestEmailChangeOTP);
+router.post('/verify-email-change-otp', verifyEmailChangeOTP);
 
 module.exports = router; 

@@ -27,6 +27,8 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const alertRoutes = require('./routes/alertRoutes');
 const settingRoutes = require('./routes/settingRoutes');
 const { scheduleNightCheck } = require('./scheduler/nightCheckScheduler');
+const verificationRoutes = require('./routes/verificationRoutes');
+
 
 const app = express();
 
@@ -59,6 +61,8 @@ app.use('/api/farms', farmRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/alerts', alertRoutes);
 app.use('/api/settings', settingRoutes);
+app.use('/api/verify', verificationRoutes);
+
 
 // 404 handler for all unmatched routes
 app.use((req, res, next) => {

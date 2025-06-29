@@ -29,13 +29,21 @@ const userSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+
+  // ✅ Email verification fields
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  verifyRequestId: {
+    type: String // optional: store verification request ID
   }
 }, {
   timestamps: true
 });
 
-
-// Hash password before saving
+// 🔐 Hash password before saving
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
   const salt = await bcrypt.genSalt(10);
@@ -43,7 +51,7 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
-// Password verification method
+// 🔐 Password verification method
 userSchema.methods.validatePassword = async function (inputPassword) {
   return await bcrypt.compare(inputPassword, this.password);
 };

@@ -1,4 +1,5 @@
 import api from "./api";
+import axios from "axios";
 
 export interface Setting {
   key: string;
@@ -60,4 +61,22 @@ export const settingsApi = {
       throw error;
     }
   }
+};
+
+export const requestEmailChangeOTP = async (newEmail: string, token: string) => {
+  const res = await axios.post(
+    '/api/settings/request-email-change-otp',
+    { newEmail },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return res.data;
+};
+
+export const verifyEmailChangeOTP = async (newEmail: string, otp: string, token: string) => {
+  const res = await axios.post(
+    '/api/settings/verify-email-change-otp',
+    { newEmail, otp },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return res.data;
 }; 

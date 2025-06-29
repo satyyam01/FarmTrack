@@ -1,6 +1,13 @@
 const Notification = require('../models/notification');
 const Animal = require('../models/animal');
 const ReturnLog = require('../models/returnLog');
+const User = require('../models/user');
+const { sendEmail } = require('../utils/emailService');
+const { 
+  generateAlertEmail, 
+  generateFencingAlertEmail, 
+  generateBarnCheckAlertEmail 
+} = require('../utils/emailTemplates');
 
 // Helper to get today's date as YYYY-MM-DD string (timezone compliant)
 function getTodayString() {
@@ -13,17 +20,13 @@ function getTodayString() {
 
 exports.barnCheckAlert = async (req, res) => {
   try {
-    // Use timezone-compliant date string (like yield logic)
     const currentDate = getTodayString();
     const farm_id = req.user.farm_id;
 
-    // Fetch all animals in this farm
     const animals = await Animal.find({ farm_id });
-
     let missingAnimals = [];
 
     for (const animal of animals) {
-      // Check for return logs using string date comparison (timezone compliant)
       const logExists = await ReturnLog.findOne({
         animal_id: animal._id,
         farm_id,
@@ -46,7 +49,23 @@ exports.barnCheckAlert = async (req, res) => {
         message, 
         farm_id 
       });
+
       alertsSent.push(notification);
+
+      // Send email with improved template
+      const user = await User.findById(req.user.id);
+      if (user?.email) {
+        const html = generateBarnCheckAlertEmail(missingAnimals, currentDate);
+        const emailResult = await sendEmail({
+          to: user.email,
+          subject: '🚨 Barn Check Alert - FarmTrack',
+          html
+        });
+
+        if (!emailResult.success) {
+          console.error('❌ Failed to send barn check alert email:', emailResult.error);
+        }
+      }
     }
 
     res.status(200).json({
@@ -57,31 +76,47 @@ exports.barnCheckAlert = async (req, res) => {
     });
 
   } catch (error) {
+    console.error('Barn check error:', error.message);
     res.status(500).json({ error: error.message });
   }
 };
-
 
 exports.fencingAlert = async (req, res) => {
   try {
     const { tag_number } = req.body;
 
-    // Find animal by tag and farm_id
     const animal = await Animal.findOne({ tag_number, farm_id: req.user.farm_id });
     if (!animal) {
       return res.status(404).json({ error: 'Animal not found in your farm' });
     }
 
-    // Create notification
+    const alertMessage = `🚨 Animal "${animal.name}" (${animal.tag_number}) is near the farm boundary.`;
+
     const notification = await Notification.create({
       user_id: req.user.id,
       title: 'Fencing Alert',
-      message: `🚨 Animal "${animal.name}" (${animal.tag_number}) is near the farm boundary.`,
+      message: alertMessage,
       farm_id: req.user.farm_id
     });
 
+    // Send email with improved template
+    const user = await User.findById(req.user.id);
+    if (user?.email) {
+      const html = generateFencingAlertEmail(animal.name, animal.tag_number);
+      const emailResult = await sendEmail({
+        to: user.email,
+        subject: '🚨 Fencing Alert - FarmTrack',
+        html
+      });
+
+      if (!emailResult.success) {
+        console.error('❌ Failed to send fencing alert email:', emailResult.error);
+      }
+    }
+
     res.status(201).json({ message: 'Fencing alert created', notification });
   } catch (error) {
+    console.error('Fencing alert error:', error.message);
     res.status(500).json({ error: error.message });
   }
 };

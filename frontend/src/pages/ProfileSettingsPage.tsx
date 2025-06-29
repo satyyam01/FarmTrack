@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "@/services/api";
 import { useUser } from "@/contexts/UserContext";
+import { requestEmailChangeOTP, verifyEmailChangeOTP } from '@/services/settingsApi';
 
 export function ProfileSettingsPage() {
   const [isEditing, setIsEditing] = useState(false);
@@ -18,6 +19,12 @@ export function ProfileSettingsPage() {
     name: "",
     email: ""
   });
+  const [emailStep, setEmailStep] = useState<'form' | 'otp' | 'success'>('form');
+  const [newEmail, setNewEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [resendTimer, setResendTimer] = useState(60);
+  const [otpError, setOtpError] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
   const navigate = useNavigate();
   const { user, updateUser, logout } = useUser();
 
@@ -30,8 +37,29 @@ export function ProfileSettingsPage() {
     }
   }, [user]);
 
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (emailStep === 'otp' && resendTimer > 0) {
+      timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [emailStep, resendTimer]);
+
   const handleSave = async () => {
     try {
+      if (user && formData.email !== user.email) {
+        // Email changed, start OTP flow
+        setNewEmail(formData.email);
+        setOtp('');
+        setOtpError('');
+        setOtpLoading(true);
+        await requestEmailChangeOTP(formData.email, localStorage.getItem('token')!);
+        setEmailStep('otp');
+        setResendTimer(60);
+        toast.success('OTP sent to new email. Please verify.');
+        setOtpLoading(false);
+        return;
+      }
       // Call the backend API to update profile
       const response = await authApi.updateProfile(formData.name, formData.email);
       
@@ -45,8 +73,7 @@ export function ProfileSettingsPage() {
       
       toast.success("Profile updated successfully!");
     } catch (error: any) {
-      console.error("Error updating profile:", error);
-      
+      setOtpLoading(false);
       // Handle specific error cases
       if (error?.response?.data?.error?.includes('Email is already in use by another user')) {
         toast.error("Email already registered. Please use a different email.");
@@ -56,12 +83,59 @@ export function ProfileSettingsPage() {
     }
   };
 
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setOtpError('');
+    setOtpLoading(true);
+    try {
+      await verifyEmailChangeOTP(newEmail, otp, localStorage.getItem('token')!);
+      // Update user context and localStorage
+      const updatedUser = { ...user, email: newEmail };
+      updateUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setEmailStep('success');
+      toast.success('Email updated successfully!');
+      setTimeout(() => {
+        setEmailStep('form');
+        setIsEditing(false);
+        setOtp('');
+        setNewEmail('');
+        setFormData({ ...formData, email: newEmail });
+      }, 2000);
+    } catch (err: any) {
+      setOtpError(err?.response?.data?.error || 'OTP verification failed');
+      toast.error(err?.response?.data?.error || 'OTP verification failed');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setOtpError('');
+    setOtpLoading(true);
+    try {
+      await requestEmailChangeOTP(newEmail, localStorage.getItem('token')!);
+      setResendTimer(60);
+      toast.success('OTP resent to your new email.');
+    } catch (err: any) {
+      setOtpError(err?.response?.data?.error || 'Failed to resend OTP');
+      toast.error(err?.response?.data?.error || 'Failed to resend OTP');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
   const handleCancel = () => {
     setFormData({
       name: user?.name || "",
       email: user?.email || ""
     });
     setIsEditing(false);
+    // Reset OTP state when canceling
+    setEmailStep('form');
+    setOtp('');
+    setOtpError('');
+    setNewEmail('');
   };
 
   const getDeleteWarningMessage = () => {
@@ -269,6 +343,54 @@ export function ProfileSettingsPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* Email Change OTP Step */}
+                  {emailStep === 'otp' && (
+                    <div className="space-y-3 max-w-sm mx-auto">
+                      <div className="space-y-2">
+                        <Label htmlFor="otp" className="text-sm font-medium">Enter OTP</Label>
+                        <Input
+                          id="otp"
+                          type="text"
+                          placeholder="Enter 6-digit OTP"
+                          value={otp}
+                          onChange={(e) => setOtp(e.target.value)}
+                          required
+                          className="text-center text-base font-mono tracking-wider"
+                          maxLength={6}
+                        />
+                      </div>
+                      {otpError && (
+                        <div className="text-red-500 text-sm text-center">{otpError}</div>
+                      )}
+                      <div className="flex gap-2">
+                        <Button 
+                          type="button" 
+                          onClick={handleVerifyOtp}
+                          className="flex-1"
+                          disabled={otpLoading}
+                        >
+                          {otpLoading ? 'Verifying...' : 'Verify OTP'}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleResendOtp}
+                          disabled={resendTimer > 0 || otpLoading}
+                        >
+                          {resendTimer > 0 ? `Resend (${resendTimer}s)` : 'Resend'}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Success Step */}
+                  {emailStep === 'success' && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-md text-center max-w-sm mx-auto">
+                      <Mail className="h-5 w-5 text-green-600 mx-auto mb-2" />
+                      <p className="text-green-700 text-sm font-medium">Email updated successfully!</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
