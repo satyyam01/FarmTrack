@@ -73,20 +73,11 @@ export function DashboardPage() {
           } catch (error: any) {
             // Handle specific case for admin users who need to register their farm
             if (error?.response?.data?.error === 'Please register your farm first') {
-              console.log('Admin user needs to register farm, redirecting to /register');
-              window.location.href = '/register';
-              return;
+              console.error("Error fetching night check schedule:", error);
             }
-            console.error("Error fetching night check schedule:", error);
           }
         }
       } catch (error: any) {
-        // Handle specific case for admin users who need to register their farm
-        if (error?.response?.data?.error === 'Please register your farm first') {
-          console.log('Admin user needs to register farm, redirecting to /register');
-          window.location.href = '/register';
-          return;
-        }
         console.error("Error fetching dashboard data:", error);
         toast.error("Failed to load dashboard data");
       } finally {

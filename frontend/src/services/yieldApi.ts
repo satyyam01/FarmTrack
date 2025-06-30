@@ -32,7 +32,6 @@ export const yieldApi = {
     const queryString = params.toString();
     const url = `/yields/overview${queryString ? `?${queryString}` : ''}`;
 
-    console.log("Requesting Yield Overview URL:", url);
     const response = await api.get<YieldOverview>(url);
     return response.data;
   },

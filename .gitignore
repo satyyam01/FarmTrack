@@ -171,7 +171,7 @@ config.json
 config.js
 
 # Utility scripts (optional)
-utils/
+# utils/
 
 # Qodo-specific or other IDE/project files
 .qodo
@@ -211,3 +211,7 @@ local/
 # Package lock files (optional - some teams prefer to commit these)
 # package-lock.json
 # yarn.lock
+
+# Backend scripts and migrations (not required for dev/deployment)
+backend/scripts/
+backend/migrations/

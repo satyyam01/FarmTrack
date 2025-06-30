@@ -53,9 +53,6 @@ export function YieldsPage() {
 
   useEffect(() => {
     const dateStr = selectedDate || getTodayLocal();
-    console.log('=== Date Selection Debug ===');
-    console.log('selectedDate:', selectedDate);
-    console.log('formatted dateStr:', dateStr);
     fetchOverview(dateStr, dateStr);
     // Get user role from localStorage
     try {
@@ -70,19 +67,8 @@ export function YieldsPage() {
     try {
       setIsLoading(true);
       setError(null);
-      console.log('=== fetchOverview Debug ===');
-      console.log('Fetching overview with type:', selectedType, 'Start:', start, 'End:', end);
-      console.log('Start date type:', typeof start, 'Value:', start);
-      console.log('End date type:', typeof end, 'Value:', end);
       const typeParam = selectedType === "all" ? undefined : selectedType;
       const data = await yieldApi.getOverview(typeParam, start, end);
-      console.log('Received overview data:', data);
-      console.log('Daily yields count:', data.daily?.yields?.length || 0);
-      if (data.daily?.yields) {
-        data.daily.yields.forEach((yieldItem, index) => {
-          console.log(`Yield ${index + 1}: date="${yieldItem.date}", animal="${yieldItem.animal?.name}"`);
-        });
-      }
       
       // Initialize empty arrays if they don't exist
       const processedData: YieldOverview = {
@@ -115,7 +101,6 @@ export function YieldsPage() {
       
       setOverview(processedData);
     } catch (error) {
-      console.error("Error fetching yield overview:", error);
       setError("Failed to load yield data");
       toast.error("Failed to load yield data");
     } finally {
@@ -129,7 +114,6 @@ export function YieldsPage() {
       toast.success("Yield deleted successfully");
       fetchOverview(selectedDate ? formatDate(selectedDate) : undefined, selectedDate ? formatDate(selectedDate) : undefined);
     } catch (error) {
-      console.error("Error deleting yield:", error);
       toast.error("Failed to delete yield");
     }
   };
@@ -158,14 +142,11 @@ export function YieldsPage() {
 
   const handleAddYield = async (data: YieldFormData) => {
     try {
-      console.log('Submitting yield data:', data);
       const response = await yieldApi.create(data);
-      console.log('Created yield response:', response);
       fetchOverview(selectedDate ? formatDate(selectedDate) : undefined, selectedDate ? formatDate(selectedDate) : undefined);
       toast.success("Yield added successfully");
       setIsDialogOpen(false);
     } catch (error) {
-      console.error("Error adding yield:", error);
       toast.error("Failed to add yield. Please try again.");
     }
   };

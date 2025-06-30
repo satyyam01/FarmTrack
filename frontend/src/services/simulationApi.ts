@@ -25,13 +25,14 @@ interface SimulationResponse {
 
 export const simulationApi = {
     simulateScan: async (params: SimulateScanParams): Promise<SimulationResponse> => {
-        console.log('Sending simulation scan request:', params); // Log the request being sent
+        // REMOVE console.log('Sending simulation scan request:', params); // Log the request being sent
         try {
             const response = await api.post<SimulationResponse>('/simulate/scan', params);
-            console.log('Simulation scan response:', response.data); // Log the successful response
+            // REMOVE console.log('Simulation scan response:', response.data); // Log the successful response
             return response.data;
         } catch (error: any) {
-            console.error('Error during simulation scan:', error.response?.data || error.message); // Log the error details
+            // Log the error details
+            console.error('Error during simulation scan:', error.response?.data || error.message);
             
             // Provide more detailed error information
             if (error.response?.status === 404) {

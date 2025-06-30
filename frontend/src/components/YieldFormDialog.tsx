@@ -71,7 +71,6 @@ export function YieldFormDialog({
       );
       setAnimals(filteredAnimals);
     } catch (error) {
-      console.error("Error fetching animals:", error);
       toast.error("Failed to fetch animals");
     } finally {
       setIsLoading(false);
@@ -121,7 +120,6 @@ export function YieldFormDialog({
     }
 
     const unitType = selectedAnimalData.type === 'Cow' || selectedAnimalData.type === 'Goat' ? 'milk' : 'egg';
-    console.log('Selected animal type:', selectedAnimalData.type, 'Unit type:', unitType);
 
     setIsSubmitting(true);
     try {
@@ -131,12 +129,9 @@ export function YieldFormDialog({
         date: date,
         unit_type: unitType
       };
-      console.log('Submitting form data:', formData);
 
       await onSubmit(formData);
-      console.log('Form submission successful');
     } catch (error) {
-      console.error("Error submitting yield:", error);
       toast.error("Failed to add yield. Please try again.");
     } finally {
       setIsSubmitting(false);

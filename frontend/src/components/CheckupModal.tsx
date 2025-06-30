@@ -49,11 +49,8 @@ export function CheckupModal({ animal, isOpen, onClose, userRole }: CheckupModal
     setLoading(true);
     try {
       const data: Checkup[] = await checkupApi.getByAnimal(String(animal.id));
-      console.log('API returned checkups:', JSON.stringify(data, null, 2));
-      console.log('First checkup keys:', data.length > 0 ? Object.keys(data[0]) : 'No checkups');
       setCheckups(data);
     } catch (error) {
-      console.error("Error fetching checkups:", error);
       toast.error("Failed to load checkup records.");
       setCheckups([]); // Clear on error
     } finally {
@@ -62,13 +59,10 @@ export function CheckupModal({ animal, isOpen, onClose, userRole }: CheckupModal
   };
 
   useEffect(() => {
-    console.log('useEffect triggered - isOpen:', isOpen, 'animal:', animal?.id);
     if (isOpen && animal) {
-      console.log('Fetching checkups for animal:', animal.id);
       fetchCheckups();
     } else if (!isOpen) {
       // Only clear state when modal is actually closed
-      console.log('Clearing state - modal closed');
       setCheckups([]);
       setNewCheckup(initialCheckupState);
       setEditingId(null);
@@ -93,7 +87,6 @@ export function CheckupModal({ animal, isOpen, onClose, userRole }: CheckupModal
       setNewCheckup(initialCheckupState); // Reset form
       toast.success("Checkup added successfully");
     } catch (error: any) {
-      console.error("Error adding checkup:", error);
       const message = error.response?.data?.error || error.response?.data?.message || error.message;
       toast.error(`Failed to add checkup: ${message}`);
     }
@@ -105,19 +98,15 @@ export function CheckupModal({ animal, isOpen, onClose, userRole }: CheckupModal
           setCheckups(checkups.filter(c => (c as any)._id !== id && c.id !== id)); // Remove from local state
           toast.success("Checkup deleted successfully");
       } catch (error: any) {
-          console.error("Error deleting checkup:", error);
           const message = error.response?.data?.error || error.response?.data?.message || error.message;
           toast.error(`Failed to delete checkup: ${message}`);
       }
   }
 
   const handleEditCheckup = (checkup: Checkup) => {
-    console.log('handleEditCheckup called with checkup:', checkup);
     const checkupId = (checkup as any)._id || checkup.id; // Use _id for MongoDB, fallback to id
-    console.log('Setting editingId to:', checkupId);
     setEditingId(checkupId);
     editingIdRef.current = checkupId; // Also store in ref
-    console.log('editingIdRef.current set to:', editingIdRef.current);
     
     // Ensure date is in YYYY-MM-DD format
     let formattedDate = checkup.date;
@@ -132,26 +121,18 @@ export function CheckupModal({ animal, isOpen, onClose, userRole }: CheckupModal
       notes: checkup.notes || '',
       diagnosis: checkup.diagnosis || ''
     });
-    console.log('State set, editingId should be:', checkupId);
-    console.log('Formatted date:', formattedDate);
   };
 
   // Add a useEffect to monitor editingId changes
   useEffect(() => {
-    console.log('editingId changed to:', editingId);
   }, [editingId]);
 
   const handleUpdateCheckup = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    console.log('handleUpdateCheckup called');
-    console.log('editingId at start:', editingId);
-    console.log('editingIdRef.current:', editingIdRef.current);
-    console.log('editingCheckup:', editingCheckup);
     
     const currentEditingId = editingId || editingIdRef.current;
     
     if (!currentEditingId) {
-      console.log('No editingId, returning');
       toast.error('No checkup selected for editing');
       return;
     }
@@ -167,11 +148,7 @@ export function CheckupModal({ animal, isOpen, onClose, userRole }: CheckupModal
       return;
     }
 
-    console.log('Validation passed, proceeding with update...');
-    console.log('currentEditingId after validation:', currentEditingId);
-
     try {
-      console.log('Calling checkupApi.update with:', currentEditingId, editingCheckup);
       
       // Test the API call first
       const testData = {
@@ -179,11 +156,9 @@ export function CheckupModal({ animal, isOpen, onClose, userRole }: CheckupModal
         notes: editingCheckup.notes || undefined,
         diagnosis: editingCheckup.diagnosis || undefined
       };
-      console.log('Test data being sent:', testData);
       
       const updatedCheckup = await checkupApi.update(currentEditingId, testData);
       
-      console.log('Update successful:', updatedCheckup);
       setCheckups(checkups.map(c => 
         (c as any)._id === currentEditingId || c.id === currentEditingId ? updatedCheckup : c
       ));
@@ -192,7 +167,6 @@ export function CheckupModal({ animal, isOpen, onClose, userRole }: CheckupModal
       setEditingCheckup({ date: '', vet_name: '', notes: '', diagnosis: '' });
       toast.success("Checkup updated successfully");
     } catch (error: any) {
-      console.error("Error updating checkup:", error);
       const message = error.response?.data?.error || error.response?.data?.message || error.message;
       toast.error(`Failed to update checkup: ${message}`);
     }
@@ -279,14 +253,9 @@ export function CheckupModal({ animal, isOpen, onClose, userRole }: CheckupModal
                         type="button" 
                         size="sm" 
                         onClick={() => {
-                          console.log('Save button clicked!');
-                          console.log('About to call handleUpdateCheckup');
-                          console.log('Current editingId:', editingId);
-                          console.log('Current editingCheckup:', editingCheckup);
                           try {
                             handleUpdateCheckup();
                           } catch (error) {
-                            console.error('Error in save button click:', error);
                           }
                         }}
                         className="bg-black hover:bg-gray-800 text-white"
@@ -314,12 +283,7 @@ export function CheckupModal({ animal, isOpen, onClose, userRole }: CheckupModal
                           size="icon" 
                           className="h-6 w-6"
                           onClick={() => {
-                            const checkupId = (checkup as any)._id || checkup.id;
-                            console.log('Edit button clicked for checkup:', checkupId);
-                            console.log('Full checkup object:', JSON.stringify(checkup, null, 2));
-                            console.log('Checkup keys:', Object.keys(checkup));
                             handleEditCheckup(checkup);
-                            console.log('After handleEditCheckup call, editingId should be:', checkupId);
                           }}
                           aria-label="Edit checkup"
                         >

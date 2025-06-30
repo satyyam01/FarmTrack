@@ -59,17 +59,13 @@ export function MedicationModal({ animal, isOpen, onClose, userRole }: Medicatio
   };
 
   useEffect(() => {
-    console.log('useEffect triggered - isOpen:', isOpen, 'animal:', animal?.id);
     if (isOpen && animal) {
-      console.log('Fetching medications for animal:', animal.id);
       fetchMedications();
     } else if (!isOpen) {
-      // Only clear state when modal is actually closed
-      console.log('Clearing state - modal closed');
       setMedications([]);
       setNewMedication(initialMedicationState);
       setEditingId(null);
-      editingIdRef.current = null; // Clear ref too
+      editingIdRef.current = null;
       setEditingMedication({ medicine_name: '', dosage: '', start_date: '', end_date: '' });
     }
   }, [isOpen, animal?.id]);
@@ -140,14 +136,10 @@ export function MedicationModal({ animal, isOpen, onClose, userRole }: Medicatio
   }
 
   const handleEditMedication = (medication: Medication) => {
-    console.log('handleEditMedication called with medication:', medication);
-    const medicationId = (medication as any)._id || medication.id; // Use _id for MongoDB, fallback to id
-    console.log('Setting editingId to:', medicationId);
+    const medicationId = (medication as any)._id || medication.id;
     setEditingId(medicationId);
-    editingIdRef.current = medicationId; // Also store in ref
-    console.log('editingIdRef.current set to:', editingIdRef.current);
+    editingIdRef.current = medicationId;
     
-    // Ensure dates are in YYYY-MM-DD format
     let formattedStartDate = medication.start_date;
     let formattedEndDate = medication.end_date || '';
     
@@ -164,27 +156,18 @@ export function MedicationModal({ animal, isOpen, onClose, userRole }: Medicatio
       start_date: formattedStartDate,
       end_date: formattedEndDate
     });
-    console.log('State set, editingId should be:', medicationId);
-    console.log('Formatted start date:', formattedStartDate);
-    console.log('Formatted end date:', formattedEndDate);
   };
 
   const handleUpdateMedication = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    console.log('handleUpdateMedication called');
-    console.log('editingId at start:', editingId);
-    console.log('editingIdRef.current:', editingIdRef.current);
-    console.log('editingMedication:', editingMedication);
     
     const currentEditingId = editingId || editingIdRef.current;
     
     if (!currentEditingId) {
-      console.log('No editingId, returning');
       toast.error('No medication selected for editing');
       return;
     }
 
-    // Simple validation
     if (!editingMedication.medicine_name.trim()) {
       toast.error('Medicine name is required');
       return;
@@ -200,22 +183,14 @@ export function MedicationModal({ animal, isOpen, onClose, userRole }: Medicatio
       return;
     }
 
-    console.log('Validation passed, proceeding with update...');
-    console.log('currentEditingId after validation:', currentEditingId);
-
     try {
-      console.log('Calling medicationApi.update with:', currentEditingId, editingMedication);
-      
-      // Test the API call first
       const testData = {
         ...editingMedication,
         end_date: editingMedication.end_date || null
       };
-      console.log('Test data being sent:', testData);
       
       const updatedMedication = await medicationApi.update(currentEditingId, testData);
       
-      console.log('Update successful:', updatedMedication);
       setMedications(medications.map(m => 
         (m as any)._id === currentEditingId || m.id === currentEditingId ? updatedMedication : m
       ));

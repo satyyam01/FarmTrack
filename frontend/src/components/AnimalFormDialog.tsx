@@ -86,14 +86,9 @@ export function AnimalFormDialog({
         is_producing_yield: false,
       });
     }
-    console.log('Form reset with values:', form.getValues());
   }, [animal, form]);
 
   const handleSubmit = (data: AnimalFormData) => {
-    console.log('AnimalFormDialog handleSubmit called with data:', data);
-    console.log('Form is valid:', form.formState.isValid);
-    console.log('Form errors:', form.formState.errors);
-    
     try {
       // Ensure is_producing_yield is set for female animals
       if (data.gender === 'Female' && data.is_producing_yield === undefined) {
@@ -101,18 +96,13 @@ export function AnimalFormDialog({
       }
       
       onSubmit(data);
-      console.log('onSubmit called successfully');
     } catch (error) {
-      console.error('Error in handleSubmit:', error);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={(newOpen) => {
-      console.log('Dialog onOpenChange called with:', newOpen);
       if (!newOpen) {
-        // Only close if form is not being submitted
-        console.log('Attempting to close dialog');
       }
       onOpenChange(newOpen);
     }}>
@@ -123,7 +113,6 @@ export function AnimalFormDialog({
         <Form {...form}>
           <form 
             onSubmit={(e) => {
-              console.log('Form onSubmit event triggered');
               form.handleSubmit(handleSubmit)(e);
             }} 
             className="space-y-4"
@@ -200,7 +189,6 @@ export function AnimalFormDialog({
                     <FormLabel>Producing Yield</FormLabel>
                     <Select
                       onValueChange={(value) => {
-                        console.log('is_producing_yield changed to:', value);
                         field.onChange(value === "true");
                       }}
                       value={field.value ? "true" : "false"}
@@ -260,7 +248,6 @@ export function AnimalFormDialog({
               <Button 
                 type="submit"
                 onClick={() => {
-                  console.log('Save button clicked');
                 }}
               >
                 Save

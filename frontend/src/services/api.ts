@@ -126,9 +126,7 @@ export const animalApi = {
   
   create: async (data: AnimalFormData): Promise<Animal> => {
     const apiData = transformFrontendToApi(data);
-    console.log('Sending data to API:', apiData);
     const response = await api.post('/animals', apiData);
-    console.log('API response:', response.data);
     return transformApiToFrontend(response.data);
   },
   
@@ -156,18 +154,7 @@ export const authApi = {
   },
 
   createFarm: async (name: string, location: string): Promise<{ message: string, farm: any, user: any, token?: string }> => {
-    console.log("=== API createFarm Debug ===")
-    console.log("Sending request to /farms")
-    console.log("Request data:", { name, location })
-    console.log("Current token:", localStorage.getItem('token'))
-    
     const response = await api.post('/farms', { name, location });
-    
-    console.log("API response received")
-    console.log("Response status:", response.status)
-    console.log("Response data:", response.data)
-    console.log("=== API createFarm Complete ===")
-    
     return response.data;
   },
 
