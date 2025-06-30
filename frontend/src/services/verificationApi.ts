@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:3000/api/verify';
+const API_URL = import.meta.env.VITE_API_URL + '/api/verify';
 
 const verificationApi = {
   sendOTP: async (data: { name: string; email: string; password: string; role: string; farm_id?: string }) => {
