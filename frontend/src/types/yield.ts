@@ -3,15 +3,15 @@ export type YieldPeriod = 'day' | 'week' | 'month';
 export type UnitType = 'milk' | 'egg';
 
 export interface Yield {
-  id: number;
-  animal_id: number;
+  id: string;
+  animal_id: string;
   date: string;
   quantity: number;
   unit_type: UnitType;
   created_at: string;
   updated_at: string;
   animal?: {
-    id: number;
+    id: string;
     name: string;
     tag_number: string;
     type: YieldType;
@@ -19,7 +19,7 @@ export interface Yield {
 }
 
 export interface YieldFormData {
-  animal_id: number;
+  animal_id: string;
   quantity: number;
   date: string;
   unit_type: UnitType;

@@ -1,30 +1,32 @@
-import { useState, useEffect } from "react";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogFooter 
-} from "@/components/ui/dialog";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Animal } from "../types/animal";
-import { animalApi } from "../services/api";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { Animal } from "@/types/animal";
+import { animalApi } from "@/services/api";
+import { yieldApi } from "@/services/yieldApi";
 import { YieldFormData } from "@/types/yield";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { ChevronDown } from "lucide-react";
+import { useRef } from "react";
+import { format } from "date-fns";
 
 interface YieldFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: YieldFormData) => void;
+}
+
+// Helper to get today's date in local time (YYYY-MM-DD)
+function getTodayLocal(): string {
+  const now = new Date();
+  // Use local year, month, day (no offset)
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 export function YieldFormDialog({
@@ -35,9 +37,12 @@ export function YieldFormDialog({
   const [animals, setAnimals] = useState<Animal[]>([]);
   const [selectedAnimal, setSelectedAnimal] = useState<string>("");
   const [quantity, setQuantity] = useState<string>("");
-  const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState<string>(getTodayLocal());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -45,9 +50,16 @@ export function YieldFormDialog({
       // Reset form when dialog opens
       setSelectedAnimal("");
       setQuantity("");
-      setDate(new Date().toISOString().split('T')[0]);
+      setDate(getTodayLocal());
     }
   }, [open]);
+
+  // Focus search input when popover opens
+  useEffect(() => {
+    if (popoverOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [popoverOpen]);
 
   const fetchAnimals = async () => {
     try {
@@ -59,12 +71,36 @@ export function YieldFormDialog({
       );
       setAnimals(filteredAnimals);
     } catch (error) {
-      console.error("Error fetching animals:", error);
       toast.error("Failed to fetch animals");
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Group animals by type
+  const groupedAnimals = useMemo(() => {
+    const groups: { [type: string]: Animal[] } = {};
+    animals.forEach(animal => {
+      if (!groups[animal.type]) groups[animal.type] = [];
+      groups[animal.type].push(animal);
+    });
+    return groups;
+  }, [animals]);
+
+  // Filter animals by search
+  const filteredGroupedAnimals = useMemo(() => {
+    if (!search.trim()) return groupedAnimals;
+    const lower = search.toLowerCase();
+    const filtered: { [type: string]: Animal[] } = {};
+    Object.entries(groupedAnimals).forEach(([type, list]) => {
+      const filteredList = list.filter(animal =>
+        animal.name.toLowerCase().includes(lower) ||
+        animal.tag_number.toLowerCase().includes(lower)
+      );
+      if (filteredList.length > 0) filtered[type] = filteredList;
+    });
+    return filtered;
+  }, [groupedAnimals, search]);
 
   const handleSubmit = async () => {
     if (!selectedAnimal) {
@@ -77,29 +113,25 @@ export function YieldFormDialog({
       return;
     }
 
-    const selectedAnimalData = animals.find(a => a.id.toString() === selectedAnimal);
+    const selectedAnimalData = animals.find(a => String(a.id) === selectedAnimal);
     if (!selectedAnimalData) {
       toast.error("Selected animal not found");
       return;
     }
 
     const unitType = selectedAnimalData.type === 'Cow' || selectedAnimalData.type === 'Goat' ? 'milk' : 'egg';
-    console.log('Selected animal type:', selectedAnimalData.type, 'Unit type:', unitType);
 
     setIsSubmitting(true);
     try {
       const formData: YieldFormData = {
-        animal_id: Number(selectedAnimal),
+        animal_id: selectedAnimal,
         quantity: Number(quantity),
-        date,
+        date: date,
         unit_type: unitType
       };
-      console.log('Submitting form data:', formData);
 
       await onSubmit(formData);
-      console.log('Form submission successful');
     } catch (error) {
-      console.error("Error submitting yield:", error);
       toast.error("Failed to add yield. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -115,18 +147,66 @@ export function YieldFormDialog({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="animal">Animal</Label>
-            <Select value={selectedAnimal} onValueChange={setSelectedAnimal} disabled={isLoading}>
-              <SelectTrigger>
-                <SelectValue placeholder={isLoading ? "Loading animals..." : "Select an animal"} />
-              </SelectTrigger>
-              <SelectContent>
-                {animals.map(animal => (
-                  <SelectItem key={animal.id} value={animal.id.toString()}>
-                    {animal.name} ({animal.tag_number})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-between"
+                  aria-expanded={popoverOpen}
+                >
+                  {isLoading
+                    ? "Loading animals..."
+                    : selectedAnimal
+                      ? (() => {
+                          const animal = animals.find(a => String(a.id) === selectedAnimal);
+                          return animal ? `${animal.name} (${animal.tag_number})` : "Select an animal";
+                        })()
+                      : "Select an animal"}
+                  <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="p-0 w-[320px]">
+                <div className="p-2 border-b">
+                  <Input
+                    ref={searchInputRef}
+                    placeholder="Search by name or tag"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    className="mb-2"
+                  />
+                </div>
+                <div className="max-h-60 overflow-y-auto">
+                  {Object.entries(filteredGroupedAnimals).length === 0 && (
+                    <div className="px-4 py-6 text-center text-muted-foreground">No animals found</div>
+                  )}
+                  {Object.entries(filteredGroupedAnimals).map(([type, list]) => (
+                    <div key={type}>
+                      <div className="px-4 py-1 text-xs font-semibold text-muted-foreground uppercase bg-muted sticky top-0 z-10">{type}</div>
+                      {list.map(animal => (
+                        <button
+                          key={animal.id}
+                          type="button"
+                          className={`w-full text-left px-4 py-2 hover:bg-accent focus:bg-accent focus:outline-none ${selectedAnimal === String(animal.id) ? 'bg-accent' : ''}`}
+                          onClick={() => {
+                            setSelectedAnimal(String(animal.id));
+                            setPopoverOpen(false);
+                          }}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              setSelectedAnimal(String(animal.id));
+                              setPopoverOpen(false);
+                            }
+                          }}
+                        >
+                          {animal.name} ({animal.tag_number})
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="space-y-2">
             <Label htmlFor="quantity">Quantity</Label>

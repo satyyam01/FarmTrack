@@ -23,23 +23,35 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../components/ui/alert-dialog";
+import { PawPrint } from "lucide-react";
 
 // Helper function to group animals by type
+const animalTypes: AnimalType[] = ["Cow", "Goat", "Hen", "Horse", "Sheep"];
 const groupAnimalsByType = (animals: Animal[]) => {
   const grouped: Record<AnimalType, Animal[]> = {
     Cow: [],
     Goat: [],
-    Hen: []
+    Hen: [],
+    Horse: [],
+    Sheep: []
   };
-
   animals.forEach(animal => {
     if (animal.type in grouped) {
       grouped[animal.type as AnimalType].push(animal);
     }
   });
-
   return grouped;
 };
+
+// Helper to get user role from localStorage
+function getUserRole(): string | null {
+  try {
+    const user = JSON.parse(localStorage.getItem("user") || "null");
+    return user?.role || null;
+  } catch {
+    return null;
+  }
+}
 
 export function AnimalsPage() {
   const [animals, setAnimals] = useState<Animal[]>([]);
@@ -51,6 +63,7 @@ export function AnimalsPage() {
   const [editingAnimal, setEditingAnimal] = useState<Animal | undefined>(undefined);
   const [animalToDelete, setAnimalToDelete] = useState<Animal | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   // Fetch animals from API
   useEffect(() => {
@@ -71,6 +84,12 @@ export function AnimalsPage() {
     fetchAnimals();
   }, []);
 
+  // Get user role on component mount
+  useEffect(() => {
+    const role = getUserRole();
+    setUserRole(role);
+  }, []);
+
   // Filter animals based on type and search query
   useEffect(() => {
     let result = animals;
@@ -80,11 +99,12 @@ export function AnimalsPage() {
       result = result.filter(animal => animal.type === selectedType);
     }
     
-    // Filter by tag number
+    // Filter by tag number or name
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(animal => 
-        animal.tag_number.toLowerCase().includes(query)
+        animal.tag_number.toLowerCase().includes(query) ||
+        animal.name.toLowerCase().includes(query)
       );
     }
     
@@ -110,8 +130,12 @@ export function AnimalsPage() {
     if (!animalToDelete) return;
     
     try {
-      await animalApi.delete(animalToDelete.id.toString());
-      setAnimals(prev => prev.filter(animal => animal.id !== animalToDelete.id));
+      const animalId = (animalToDelete as any)._id || animalToDelete.id;
+      await animalApi.delete(animalId.toString());
+      setAnimals(prev => prev.filter(animal => {
+        const currentId = (animal as any)._id || animal.id;
+        return currentId !== animalId;
+      }));
       toast.success("Animal deleted successfully");
     } catch (error) {
       console.error("Error deleting animal:", error);
@@ -126,11 +150,13 @@ export function AnimalsPage() {
     try {
       if (editingAnimal) {
         // Update existing animal
-        const updatedAnimal = await animalApi.update(editingAnimal.id.toString(), data);
+        const animalId = (editingAnimal as any)._id || editingAnimal.id;
+        const updatedAnimal = await animalApi.update(animalId.toString(), data);
         setAnimals(prev => 
-          prev.map(animal => 
-            animal.id === editingAnimal.id ? updatedAnimal : animal
-          )
+          prev.map(animal => {
+            const currentId = (animal as any)._id || animal.id;
+            return currentId === animalId ? updatedAnimal : animal;
+          })
         );
         toast.success("Animal updated successfully");
       } else {
@@ -149,23 +175,21 @@ export function AnimalsPage() {
   // Render animal cards grouped by type
   const renderAnimalGroups = () => {
     const groupedAnimals = groupAnimalsByType(filteredAnimals);
-    const animalTypes: AnimalType[] = ["Cow", "Goat", "Hen"];
-
     return animalTypes.map(type => {
       const animalsOfType = groupedAnimals[type];
       if (selectedType !== "all" && selectedType !== type) return null;
       if (animalsOfType.length === 0) return null;
-
       return (
         <div key={type} className="space-y-4">
           <h2 className="text-2xl font-semibold">{type}s</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {animalsOfType.map(animal => (
               <AnimalCard 
-                key={animal.id} 
+                key={(animal as any)._id || animal.id} 
                 animal={animal} 
                 onEdit={handleEditAnimal}
                 onDelete={handleDeleteClick}
+                userRole={userRole}
               />
             ))}
           </div>
@@ -174,54 +198,75 @@ export function AnimalsPage() {
     });
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="w-full max-w-3xl">
+          <div className="shadow-xl rounded-2xl border bg-white/90">
+            <div className="space-y-2 text-center border-b pb-4 pt-6">
+              <div className="flex justify-center mb-2">
+                <PawPrint className="h-10 w-10 text-green-600" />
+              </div>
+              <h1 className="text-3xl font-bold tracking-tight">Animals</h1>
+            </div>
+            <div className="p-8 flex flex-col items-center">
+              <p>Loading...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold">Animals</h1>
-        <Button onClick={handleAddAnimal}>Add Animal</Button>
+    <div className="min-h-screen flex items-center justify-center bg-background pt-2 pb-4 px-2">
+      <div className="w-full max-w-7xl">
+        <div className="shadow-xl rounded-2xl border bg-white/90">
+          <div className="space-y-2 text-center border-b pb-4 pt-6">
+            <div className="flex justify-center mb-2">
+              <PawPrint className="h-10 w-10 text-green-600" />
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight">Animals</h1>
+          </div>
+          <div className="p-6 space-y-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+              <div className="flex gap-2 items-center w-full md:w-auto">
+                <Input
+                  placeholder="Search by tag or name"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full md:w-64"
+                />
+                <Select value={selectedType} onValueChange={value => setSelectedType(value as AnimalType | "all") }>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Filter by type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    {animalTypes.map(type => (
+                      <SelectItem key={type} value={type}>{type}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {userRole === "admin" && (
+                  <Button onClick={handleAddAnimal}>
+                    Add Animal
+                  </Button>
+                )}
+              </div>
+            </div>
+            {filteredAnimals.length === 0 ? (
+              <div className="rounded-lg border p-8 text-center">
+                <p className="text-muted-foreground">No animals found.</p>
+              </div>
+            ) : (
+              <div className="space-y-8">
+                {renderAnimalGroups()}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-      
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="w-full sm:w-64">
-          <Select 
-            value={selectedType} 
-            onValueChange={(value) => setSelectedType(value as AnimalType | "all")}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="Cow">Cow</SelectItem>
-              <SelectItem value="Goat">Goat</SelectItem>
-              <SelectItem value="Hen">Hen</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div className="w-full sm:w-64">
-          <Input
-            placeholder="Search by tag number"
-            value={searchQuery}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-          />
-        </div>
-      </div>
-      
-      {isLoading ? (
-        <div className="flex justify-center items-center h-64">
-          <p className="text-muted-foreground">Loading animals...</p>
-        </div>
-      ) : filteredAnimals.length === 0 ? (
-        <div className="rounded-lg border p-8 text-center">
-          <p className="text-muted-foreground">No animals found.</p>
-        </div>
-      ) : (
-        <div className="space-y-8">
-          {renderAnimalGroups()}
-        </div>
-      )}
-      
       <AnimalFormDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
@@ -229,7 +274,6 @@ export function AnimalsPage() {
         animal={editingAnimal}
         title={editingAnimal ? "Edit Animal" : "Add Animal"}
       />
-
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

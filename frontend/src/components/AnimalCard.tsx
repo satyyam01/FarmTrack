@@ -5,11 +5,12 @@ import { Trash2 } from "lucide-react";
 
 interface AnimalCardProps {
   animal: Animal;
-  onEdit: (animal: Animal) => void;
-  onDelete: (animal: Animal) => void;
+  onEdit?: (animal: Animal) => void;
+  onDelete?: (animal: Animal) => void;
+  userRole?: string | null;
 }
 
-export function AnimalCard({ animal, onEdit, onDelete }: AnimalCardProps) {
+export function AnimalCard({ animal, onEdit, onDelete, userRole }: AnimalCardProps) {
   return (
     <Card>
       <CardHeader>
@@ -43,21 +44,25 @@ export function AnimalCard({ animal, onEdit, onDelete }: AnimalCardProps) {
         </div>
       </CardContent>
       <CardFooter className="flex justify-between gap-2">
-        <Button 
-          variant="outline" 
-          className="flex-1"
-          onClick={() => onEdit(animal)}
-        >
-          Edit
-        </Button>
-        <Button 
-          variant="destructive" 
-          size="icon"
-          className="rounded-full"
-          onClick={() => onDelete(animal)}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        {userRole === "admin" && (
+          <>
+            <Button 
+              variant="outline" 
+              className="flex-1"
+              onClick={() => onEdit && onEdit(animal)}
+            >
+              Edit
+            </Button>
+            <Button 
+              variant="destructive" 
+              size="icon"
+              className="rounded-full"
+              onClick={() => onDelete && onDelete(animal)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </>
+        )}
       </CardFooter>
     </Card>
   );

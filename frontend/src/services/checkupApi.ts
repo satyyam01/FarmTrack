@@ -1,7 +1,7 @@
 import api from './api';
 
 export const checkupApi = {
-  getByAnimal: async (animalId: number) => {
+  getByAnimal: async (animalId: string) => {
     const response = await api.get(`/checkups/animal/${animalId}`);
     return response.data;
   },
@@ -9,11 +9,11 @@ export const checkupApi = {
     const response = await api.post('/checkups', data);
     return response.data;
   },
-  update: async (id: number, data: any) => {
+  update: async (id: string, data: any) => {
     const response = await api.put(`/checkups/${id}`, data);
     return response.data;
   },
-  delete: async (id: number) => {
+  delete: async (id: string) => {
     await api.delete(`/checkups/${id}`);
   }
 };
