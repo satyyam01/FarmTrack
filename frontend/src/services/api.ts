@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { Animal, AnimalFormData } from '../types/animal';
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL + '/api';
 
 // Create axios instance with default config
 const api = axios.create({

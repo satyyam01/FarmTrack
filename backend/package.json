@@ -32,11 +32,11 @@
     "supertest": "^7.1.0"
   },
   "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "dev": "nodemon app.js",
-    "start": "nodemon app.js",
     "check-gitignore": "node scripts/check-gitignore.js"
   },
   "keywords": [],
