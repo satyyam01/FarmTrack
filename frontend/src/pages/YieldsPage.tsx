@@ -142,7 +142,7 @@ export function YieldsPage() {
 
   const handleAddYield = async (data: YieldFormData) => {
     try {
-      const response = await yieldApi.create(data);
+      await yieldApi.create(data);
       fetchOverview(selectedDate ? formatDate(selectedDate) : undefined, selectedDate ? formatDate(selectedDate) : undefined);
       toast.success("Yield added successfully");
       setIsDialogOpen(false);

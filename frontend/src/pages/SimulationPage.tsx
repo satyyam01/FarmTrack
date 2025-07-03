@@ -19,13 +19,6 @@ const locationOptions = [
   { value: "GENERAL_IDENTIFICATION", label: "General ID Scan (Info)" },
 ];
 
-// Define unit options for the dropdown
-const unitOptions = [
-    { value: "Liters", label: "Liters" },
-    { value: "count", label: "Count" },
-    { value: "kg", label: "kg (Other)" },
-];
-
 export function SimulationPage() {
   const [tagNumber, setTagNumber] = useState<string>("");
   const [selectedLocation, setSelectedLocation] = useState<string>("");
