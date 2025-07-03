@@ -4,6 +4,7 @@
   "main": "app.js",
   "dependencies": {
     "@pinecone-database/pinecone": "^6.1.1",
+    "chrono-node": "^2.8.3",
     "@sendgrid/mail": "^8.1.5",
     "bcryptjs": "^2.4.3",
     "body-parser": "^2.2.0",
