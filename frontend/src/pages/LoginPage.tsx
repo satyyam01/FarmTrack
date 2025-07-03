@@ -32,7 +32,6 @@ export function LoginPage() {
   const [resendTimer, setResendTimer] = useState(60)
   const [otpLoading, setOtpLoading] = useState(false)
   const [otpError, setOtpError] = useState("")
-  const [passwordError, setPasswordError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   // Password validation regex
@@ -87,10 +86,8 @@ export function LoginPage() {
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setPasswordError("");
     // Password validation
     if (!passwordRegex.test(formData.password)) {
-      setPasswordError("Password must be at least 8 characters long and include at least one uppercase letter, one digit, and one special character.");
       return;
     }
     setLoading(true);

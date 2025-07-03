@@ -2,7 +2,6 @@ import { Animal } from "@/types/animal";
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
 import { HeartPulse, CheckCircle } from "lucide-react";
 
 interface AnimalHealthCardProps {

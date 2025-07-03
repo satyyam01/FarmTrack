@@ -6,12 +6,10 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { toast } from "sonner";
 import { Animal } from "@/types/animal";
 import { animalApi } from "@/services/api";
-import { yieldApi } from "@/services/yieldApi";
 import { YieldFormData } from "@/types/yield";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { ChevronDown } from "lucide-react";
 import { useRef } from "react";
-import { format } from "date-fns";
 
 interface YieldFormDialogProps {
   open: boolean;

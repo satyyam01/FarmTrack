@@ -124,17 +124,6 @@ export function HealthRecordPage() {
     loadAnimalsAndCounts();
   }, []);
 
-  // Functions to open modals
-  const handleOpenCheckupModal = (animal: Animal) => {
-    setCurrentAnimalForModal(animal);
-    setIsCheckupModalOpen(true);
-  };
-
-  const handleOpenMedicationModal = (animal: Animal) => {
-    setCurrentAnimalForModal(animal);
-    setIsMedicationModalOpen(true);
-  };
-  
   // Function to potentially refresh data after modal closes (optional for now)
   const handleModalClose = () => {
       // Could enhance this to refetch counts for the specific animal if needed
