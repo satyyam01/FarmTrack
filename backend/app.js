@@ -43,7 +43,10 @@ mongoose.connection.once('open', () => {
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: [
+    'https://farmtrack.satyyam.site', // production
+    'http://localhost:5173'           // local dev
+  ],
   credentials: true
 }));
 app.use(bodyParser.json());
