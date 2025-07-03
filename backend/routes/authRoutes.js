@@ -11,5 +11,7 @@ router.post('/login', authController.login);
 router.get('/profile', authenticate, authController.getProfile);
 router.put('/profile', authenticate, authController.updateProfile);
 router.delete('/account', authenticate, authController.deleteAccount);
+router.post('/password/request-otp', authenticate, authController.requestPasswordChangeOTP);
+router.post('/password/change', authenticate, authController.changePasswordWithOTP);
 
 module.exports = router; 

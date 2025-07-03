@@ -252,23 +252,24 @@ export function LandingPage() {
             <h3 className="text-2xl font-bold text-white mb-4">
               🚀 Supercharge Your Farm Today!
             </h3>
-            <p className="text-lg text-green-100 max-w-xl mx-auto">
+            {/* <p className="text-lg text-green-100 max-w-xl mx-auto">
               Experience the future of farm management with cutting-edge technology, real-time insights, and unparalleled efficiency. Join the revolution and take your farm operations to the next level!
-            </p>
+            </p> */}
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-8">
-        <div className="container mx-auto px-4 text-center">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Building2 className="h-6 w-6 text-green-400" />
-            <span className="text-xl font-bold">FarmTrack</span>
+      <footer className="border-t bg-gradient-to-r from-green-50 via-white to-blue-50 shadow-inner mt-16">
+        <div className="container mx-auto px-4 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="text-sm text-gray-500">&copy; {new Date().getFullYear()} FarmTrack. All rights reserved.</div>
+          <div className="flex flex-wrap gap-3 text-sm justify-center md:justify-end">
+            <Link to="/privacy-policy" className="px-4 py-1 rounded-full bg-white/80 border border-gray-200 shadow-sm hover:bg-green-100 hover:text-green-700 transition font-medium">Privacy Policy</Link>
+            <Link to="/terms" className="px-4 py-1 rounded-full bg-white/80 border border-gray-200 shadow-sm hover:bg-green-100 hover:text-green-700 transition font-medium">Terms and Conditions</Link>
+            <Link to="/cancellation-refund" className="px-4 py-1 rounded-full bg-white/80 border border-gray-200 shadow-sm hover:bg-green-100 hover:text-green-700 transition font-medium">Cancellation & Refund</Link>
+            <Link to="/shipping-delivery" className="px-4 py-1 rounded-full bg-white/80 border border-gray-200 shadow-sm hover:bg-green-100 hover:text-green-700 transition font-medium">Shipping & Delivery</Link>
+            <Link to="/contact" className="px-4 py-1 rounded-full bg-white/80 border border-gray-200 shadow-sm hover:bg-green-100 hover:text-green-700 transition font-medium">Contact Us</Link>
           </div>
-          <p className="text-gray-400">
-            © 2024 FarmTrack. All rights reserved. Modern farm management for the digital age.
-          </p>
         </div>
       </footer>
     </div>
