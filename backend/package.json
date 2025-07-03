@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "app.js",
   "dependencies": {
+    "@pinecone-database/pinecone": "^6.1.1",
     "@sendgrid/mail": "^8.1.5",
     "bcryptjs": "^2.4.3",
     "body-parser": "^2.2.0",
