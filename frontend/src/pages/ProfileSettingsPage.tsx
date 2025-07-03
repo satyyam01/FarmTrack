@@ -4,12 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { User, Mail, Save, Edit, X, Shield, ArrowLeft, Trash2, AlertTriangle, Building2, Database } from "lucide-react";
+import { User, Mail, Save, Edit, X, Shield, ArrowLeft, Trash2, AlertTriangle, Building2, Database, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "@/services/api";
 import { useUser } from "@/contexts/UserContext";
-import { requestEmailChangeOTP, verifyEmailChangeOTP } from '@/services/settingsApi';
+import { requestEmailChangeOTP, verifyEmailChangeOTP, requestPasswordChangeOTP, changePasswordWithOTP } from '@/services/settingsApi';
 
 export function ProfileSettingsPage() {
   const [isEditing, setIsEditing] = useState(false);
@@ -25,6 +25,18 @@ export function ProfileSettingsPage() {
   const [resendTimer, setResendTimer] = useState(60);
   const [otpError, setOtpError] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
+  // Password change state
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [passwordChangeStep, setPasswordChangeStep] = useState<'form' | 'otp' | 'success'>('form');
+  const [passwordChangeLoading, setPasswordChangeLoading] = useState(false);
+  const [passwordChangeError, setPasswordChangeError] = useState("");
+  const [passwordOtp, setPasswordOtp] = useState("");
+  const [passwordResendTimer, setPasswordResendTimer] = useState(60);
+  // Password validation regex
+  const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+  const passwordValid = passwordRegex.test(newPassword);
   const navigate = useNavigate();
   const { user, updateUser, logout } = useUser();
 
@@ -44,6 +56,15 @@ export function ProfileSettingsPage() {
     }
     return () => clearTimeout(timer);
   }, [emailStep, resendTimer]);
+
+  // Password resend timer effect
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (showPasswordChange && passwordChangeStep === 'otp' && passwordResendTimer > 0) {
+      timer = setTimeout(() => setPasswordResendTimer(passwordResendTimer - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [showPasswordChange, passwordChangeStep, passwordResendTimer]);
 
   const handleSave = async () => {
     try {
@@ -122,6 +143,61 @@ export function ProfileSettingsPage() {
       toast.error(err?.response?.data?.error || 'Failed to resend OTP');
     } finally {
       setOtpLoading(false);
+    }
+  };
+
+  // Password change handlers
+  const handleRequestPasswordOtp = async () => {
+    setPasswordChangeError("");
+    if (!passwordValid) {
+      setPasswordChangeError("Password does not meet requirements.");
+      return;
+    }
+    setPasswordChangeLoading(true);
+    try {
+      await requestPasswordChangeOTP(localStorage.getItem('token')!);
+      setPasswordChangeStep('otp');
+      setPasswordResendTimer(60);
+      toast.success('OTP sent to your email.');
+    } catch (err: any) {
+      setPasswordChangeError(err?.response?.data?.error || 'Failed to send OTP');
+      toast.error(err?.response?.data?.error || 'Failed to send OTP');
+    } finally {
+      setPasswordChangeLoading(false);
+    }
+  };
+  const handleVerifyPasswordOtp = async () => {
+    setPasswordChangeError("");
+    setPasswordChangeLoading(true);
+    try {
+      await changePasswordWithOTP(newPassword, passwordOtp, localStorage.getItem('token')!);
+      setPasswordChangeStep('success');
+      toast.success('Password changed successfully!');
+      setTimeout(() => {
+        setShowPasswordChange(false);
+        setPasswordChangeStep('form');
+        setNewPassword("");
+        setPasswordOtp("");
+      }, 2000);
+    } catch (err: any) {
+      setPasswordChangeError(err?.response?.data?.error || 'Failed to change password');
+      toast.error(err?.response?.data?.error || 'Failed to change password');
+    } finally {
+      setPasswordChangeLoading(false);
+    }
+  };
+  const handleResendPasswordOtp = async () => {
+    setPasswordChangeError("");
+    setPasswordChangeLoading(true);
+    try {
+      await requestPasswordChangeOTP(localStorage.getItem('token')!);
+      setPasswordResendTimer(60);
+      toast.success('OTP resent to your email.');
+    } catch (err: any) {
+      setPasswordChangeError(err?.response?.data?.error || 'Failed to resend OTP');
+      toast.error(err?.response?.data?.error || 'Failed to resend OTP');
+    } finally {
+      setPasswordChangeLoading(false);
     }
   };
 
@@ -432,34 +508,130 @@ export function ProfileSettingsPage() {
                 </div>
               </div>
 
-              {/* Security Section */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Security</h3>
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-sm text-yellow-700 mb-2">
-                    Password change functionality will be available soon
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled
-                    className="text-yellow-700 border-yellow-300"
-                  >
-                    Change Password
-                  </Button>
+              {/* Security & Danger Zone Side by Side */}
+              <div className="flex flex-col md:flex-row md:space-x-6 space-y-4 md:space-y-0">
+                {/* Security Section */}
+                <div className="flex-1 space-y-4">
+                  <h3 className="text-lg font-semibold">Security</h3>
+                  {!showPasswordChange ? (
+                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex flex-col items-center justify-center">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-yellow-700 border-yellow-300"
+                        onClick={() => setShowPasswordChange(true)}
+                      >
+                        Change Password
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg space-y-4">
+                      {passwordChangeStep === 'form' && (
+                        <>
+                          <Label htmlFor="new-password">New Password</Label>
+                          <div className="relative mb-2">
+                            <Input
+                              id="new-password"
+                              type={showNewPassword ? "text" : "password"}
+                              placeholder="Enter new password"
+                              value={newPassword}
+                              onChange={e => setNewPassword(e.target.value)}
+                              required
+                            />
+                            <button
+                              type="button"
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                              onClick={() => setShowNewPassword(prev => !prev)}
+                              tabIndex={-1}
+                            >
+                              {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                          </div>
+                          <ul className={`text-xs mt-1 ml-1 list-disc pl-5 ${newPassword && !passwordValid ? 'text-red-500' : 'text-muted-foreground'}`}>
+                            <li>At least 8 characters long</li>
+                            <li>At least 1 uppercase letter</li>
+                            <li>At least 1 digit</li>
+                            <li>At least 1 special character</li>
+                          </ul>
+                          {passwordChangeError && (
+                            <div className="text-red-500 text-xs font-medium mt-2">{passwordChangeError}</div>
+                          )}
+                          <div className="flex gap-2 mt-4">
+                            <Button
+                              type="button"
+                              onClick={handleRequestPasswordOtp}
+                              disabled={passwordChangeLoading}
+                              className="flex-1"
+                            >
+                              {passwordChangeLoading ? 'Sending OTP...' : 'Send OTP'}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => {
+                                setShowPasswordChange(false);
+                                setPasswordChangeStep('form');
+                                setNewPassword("");
+                                setPasswordOtp("");
+                                setPasswordChangeError("");
+                              }}
+                              disabled={passwordChangeLoading}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                      {passwordChangeStep === 'otp' && (
+                        <>
+                          <Label htmlFor="password-otp">Enter OTP</Label>
+                          <Input
+                            id="password-otp"
+                            type="text"
+                            placeholder="Enter 6-digit OTP"
+                            value={passwordOtp}
+                            onChange={e => setPasswordOtp(e.target.value)}
+                            required
+                            className="text-center text-base font-mono tracking-wider"
+                            maxLength={6}
+                          />
+                          {passwordChangeError && (
+                            <div className="text-red-500 text-xs font-medium mt-2">{passwordChangeError}</div>
+                          )}
+                          <div className="flex gap-2 mt-4">
+                            <Button
+                              type="button"
+                              onClick={handleVerifyPasswordOtp}
+                              disabled={passwordChangeLoading}
+                              className="flex-1"
+                            >
+                              {passwordChangeLoading ? 'Verifying...' : 'Verify OTP'}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={handleResendPasswordOtp}
+                              disabled={passwordResendTimer > 0 || passwordChangeLoading}
+                            >
+                              {passwordResendTimer > 0 ? `Resend (${passwordResendTimer}s)` : 'Resend OTP'}
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                      {passwordChangeStep === 'success' && (
+                        <div className="p-3 bg-green-50 border border-green-200 rounded-md text-center max-w-sm mx-auto">
+                          <Shield className="h-5 w-5 text-green-600 mx-auto mb-2" />
+                          <p className="text-green-700 text-sm font-medium">Password changed successfully!</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              </div>
-
-              {/* Danger Zone */}
-              <div className="space-y-4">
-                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-red-800 mb-1">Delete Account</h4>
-                      <p className="text-sm text-red-700 mb-3">
-                        Once you delete your account, there is no going back.
-                      </p>
+                {/* Danger Zone */}
+                <div className="flex-1 space-y-4">
+                  <h3 className="text-lg font-semibold">Danger Zone</h3>
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex flex-col items-center justify-center">
+                    <div className="flex-1 w-full flex flex-col items-center">
                       <Button
                         variant="destructive"
                         size="sm"

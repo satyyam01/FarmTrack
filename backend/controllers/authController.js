@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
 const Farm = require('../models/farm'); // Add this
+const { sendOTP, verifyOTP } = require('../utils/sendgridOTP');
 
 // JWT generator (same)
 const generateToken = (user) => {
@@ -26,6 +27,12 @@ exports.register = async (req, res) => {
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ error: 'Email already registered' });
+    }
+
+    // Password strength validation
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+    if (!passwordRegex.test(password)) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters long and include at least 1 uppercase letter, 1 digit, and 1 special character.' });
     }
 
     // If role is NOT admin, require valid farm_id
@@ -329,5 +336,44 @@ exports.deleteAccount = async (req, res) => {
     
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete account: ' + error.message });
+  }
+};
+
+// Request password change OTP
+exports.requestPasswordChangeOTP = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    await sendOTP(user.email);
+    res.json({ message: 'OTP sent to your email.' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to send OTP: ' + error.message });
+  }
+};
+
+// Change password with OTP
+exports.changePasswordWithOTP = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { newPassword, otp } = req.body;
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    // Password strength validation
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters long and include at least 1 uppercase letter, 1 digit, and 1 special character.' });
+    }
+    // Verify OTP
+    const isValidOtp = verifyOTP(user.email, otp);
+    if (!isValidOtp) {
+      return res.status(400).json({ error: 'Invalid or expired OTP.' });
+    }
+    // Update password
+    user.password = newPassword;
+    await user.save();
+    res.json({ message: 'Password changed successfully.' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to change password: ' + error.message });
   }
 };

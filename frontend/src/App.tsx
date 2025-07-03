@@ -18,6 +18,11 @@ import { ProtectedRoute } from "./components/ProtectedRoute"
 import { AuthGuard } from "./components/AuthGuard"
 import { Toaster } from "sonner"
 import { FencingAlertsPage } from "./pages/FencingAlertsPage"
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import TermsPage from './pages/TermsPage';
+import CancellationRefundPage from './pages/CancellationRefundPage';
+import ShippingDeliveryPage from './pages/ShippingDeliveryPage';
+import ContactPage from './pages/ContactPage';
 
 function App() {
   return (
@@ -44,6 +49,11 @@ function App() {
               </ProtectedRoute>
             </AuthGuard>
           } />
+          <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/cancellation-refund" element={<CancellationRefundPage />} />
+          <Route path="/shipping-delivery" element={<ShippingDeliveryPage />} />
+          <Route path="/contact" element={<ContactPage />} />
           
           {/* Protected dashboard routes */}
           <Route path="/dashboard" element={
