@@ -79,4 +79,22 @@ export const verifyEmailChangeOTP = async (newEmail: string, otp: string, token:
     { headers: { Authorization: `Bearer ${token}` } }
   );
   return res.data;
+};
+
+export const requestPasswordChangeOTP = async (token: string) => {
+  const res = await axios.post(
+    '/api/auth/password/request-otp',
+    {},
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return res.data;
+};
+
+export const changePasswordWithOTP = async (newPassword: string, otp: string, token: string) => {
+  const res = await axios.post(
+    '/api/auth/password/change',
+    { newPassword, otp },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return res.data;
 }; 

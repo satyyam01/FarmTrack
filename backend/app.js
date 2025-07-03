@@ -28,6 +28,8 @@ const alertRoutes = require('./routes/alertRoutes');
 const settingRoutes = require('./routes/settingRoutes');
 const { scheduleNightCheck } = require('./scheduler/nightCheckScheduler');
 const verificationRoutes = require('./routes/verificationRoutes');
+const chatbotRoutes = require('./routes/chatbotRoutes');
+
 
 
 const app = express();
@@ -59,6 +61,8 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/alerts', alertRoutes);
 app.use('/api/settings', settingRoutes);
 app.use('/api/verify', verificationRoutes);
+app.use('/api/chatbot', chatbotRoutes);
+
 
 
 // 404 handler for all unmatched routes

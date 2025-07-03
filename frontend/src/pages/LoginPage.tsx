@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner"
 import { useUser } from "@/contexts/UserContext"
 import verificationApi from "@/services/verificationApi"
+import { Eye, EyeOff } from "lucide-react";
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -31,6 +32,13 @@ export function LoginPage() {
   const [resendTimer, setResendTimer] = useState(60)
   const [otpLoading, setOtpLoading] = useState(false)
   const [otpError, setOtpError] = useState("")
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Password validation regex
+  const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
+
+  // Helper to check password requirements
+  const passwordValid = passwordRegex.test(formData.password);
 
   // Handle tab query parameter
   useEffect(() => {
@@ -76,22 +84,26 @@ export function LoginPage() {
   }
 
   const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setLoading(true)
-    try {
-      await verificationApi.sendOTP(formData)
-      setRegistrationStep('otp')
-      setResendTimer(60)
-      toast.success("OTP sent to your email. Please verify to complete registration.")
-    } catch (err: any) {
-      const errorMessage = err?.response?.data?.error || "Failed to send OTP"
-      setError(errorMessage)
-      toast.error(errorMessage)
-    } finally {
-      setLoading(false)
+    e.preventDefault();
+    setError("");
+    // Password validation
+    if (!passwordRegex.test(formData.password)) {
+      return;
     }
-  }
+    setLoading(true);
+    try {
+      await verificationApi.sendOTP(formData);
+      setRegistrationStep('otp');
+      setResendTimer(60);
+      toast.success("OTP sent to your email. Please verify to complete registration.");
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.error || "Failed to send OTP";
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -165,14 +177,24 @@ export function LoginPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="Enter your password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter your password"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
                 {error && tab === "login" && (
                   <div className="text-red-500 text-sm text-center font-medium">{error}</div>
@@ -209,14 +231,31 @@ export function LoginPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">Password</Label>
-                    <Input
-                      id="signup-password"
-                      type="password"
-                      placeholder="Create a password"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      required
-                    />
+                    <div className="relative">
+                      <Input
+                        id="signup-password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Create a password"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        tabIndex={-1}
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                    <ul className={`text-xs mt-1 ml-1 list-disc pl-5 ${formData.password && !passwordValid ? 'text-red-500' : 'text-muted-foreground'}`}>
+                      <ul>Password should be atleast :</ul>
+                      <ul>8 characters long</ul>
+                      <ul>Have 1 uppercase letter</ul>
+                      <ul>Have 1 digit</ul>
+                      <ul>Have 1 special character</ul>
+                    </ul>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-role">Role</Label>

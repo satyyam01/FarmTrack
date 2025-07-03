@@ -4,7 +4,6 @@ import { animalApi, returnLogApi, authApi } from "@/services/api";
 import { yieldApi } from "@/services/yieldApi";
 import { notificationApi, Notification } from "@/services/notificationApi";
 import { settingsApi } from "@/services/settingsApi";
-import { format } from "date-fns";
 import { Animal } from "@/types/animal";
 import { YieldOverview } from "@/types/yield";
 import { ReturnLog } from "@/services/api";
@@ -20,10 +19,8 @@ import {
   ShieldAlert, 
   Moon, 
   Clock,
-  Users,
   Activity,
-  TrendingUp,
-  AlertTriangle
+  TrendingUp
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
