@@ -1,5 +1,6 @@
 const ReturnLog = require('../models/returnLog');
 const Animal = require('../models/animal');
+const { getCache, setCache, delCache } = require('../utils/cache');
 
 // Get all return logs for user's farm
 exports.getAllReturnLogs = async (req, res) => {
@@ -46,9 +47,12 @@ exports.getReturnLogs = async (req, res) => {
     const { date } = req.query;
 
     let whereClause = {};
+    let cacheKey = null;
     if (date) {
-      // Use string date comparison for timezone consistency
       whereClause.date = date;
+      cacheKey = `page:nightcheck:${date}:${farmId}`;
+      const cached = await getCache(cacheKey);
+      if (cached) return res.json(cached);
     }
 
     const logs = await ReturnLog.find(whereClause).populate({
@@ -58,6 +62,7 @@ exports.getReturnLogs = async (req, res) => {
     });
 
     const filteredLogs = logs.filter(log => log.animal_id !== null);
+    if (cacheKey) await setCache(cacheKey, filteredLogs, 60);
     res.json(filteredLogs);
   } catch (error) {
     console.error('❌ Error fetching return logs:', error);
@@ -82,27 +87,30 @@ exports.createReturnLog = async (req, res) => {
 
     const existingLog = await ReturnLog.findOne({ animal_id, date });
 
+    let result;
     if (existingLog) {
       existingLog.returned = returned;
       if (return_reason) existingLog.return_reason = return_reason;
       await existingLog.save();
-      return res.json(existingLog);
+      result = existingLog;
+    } else {
+      const newLog = await ReturnLog.create({
+        animal_id,
+        date,
+        returned: returned || false,
+        return_reason,
+        farm_id: farmId
+      });
+      result = await ReturnLog.findById(newLog._id).populate({
+        path: 'animal_id',
+        select: 'tag_number name type age gender'
+      });
     }
 
-    const newLog = await ReturnLog.create({
-      animal_id,
-      date,
-      returned: returned || false,
-      return_reason,
-      farm_id: farmId
-    });
+    // Invalidate today's cache
+    await delCache(`page:nightcheck:${date}:${farmId}`);
 
-    const populated = await ReturnLog.findById(newLog._id).populate({
-      path: 'animal_id',
-      select: 'tag_number name type age gender'
-    });
-
-    res.status(201).json(populated);
+    res.status(existingLog ? 200 : 201).json(result);
   } catch (error) {
     console.error('❌ Error creating return log:', error);
     res.status(500).json({ error: 'Failed to create return log' });
@@ -132,6 +140,9 @@ exports.updateReturnLog = async (req, res) => {
       return res.status(404).json({ error: 'Return log not found' });
     }
 
+    // Invalidate today's cache
+    await delCache(`page:nightcheck:${updated.date}:${farmId}`);
+
     res.json(updated);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -149,6 +160,9 @@ exports.deleteReturnLog = async (req, res) => {
     if (!log.animal_id || log.animal_id.farm_id.toString() !== farmId.toString()) {
       return res.status(403).json({ error: 'Unauthorized to delete this return log' });
     }
+
+    // Invalidate today's cache
+    await delCache(`page:nightcheck:${log.date}:${farmId}`);
 
     await log.deleteOne();
     res.json({ message: 'Return log deleted' });

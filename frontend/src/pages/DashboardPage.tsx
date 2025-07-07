@@ -1,13 +1,10 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { animalApi, returnLogApi, authApi } from "@/services/api";
-import { yieldApi } from "@/services/yieldApi";
-import { notificationApi, Notification } from "@/services/notificationApi";
-import { settingsApi } from "@/services/settingsApi";
-import { Animal } from "@/types/animal";
-import { YieldOverview } from "@/types/yield";
-import { ReturnLog } from "@/services/api";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { toast } from "sonner";
+import { useUser } from "@/contexts/UserContext";
+import api from "@/services/api";
 import { 
   CheckCircle, 
   AlertCircle, 
@@ -23,128 +20,28 @@ import {
   TrendingUp
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
-import { toast } from "sonner";
-import { useUser } from "@/contexts/UserContext";
+import { Badge } from "@/components/ui/badge";
 
 export function DashboardPage() {
-  const [animals, setAnimals] = useState<Animal[]>([]);
-  const [yields, setYields] = useState<YieldOverview | null>(null);
-  const [returnLogs, setReturnLogs] = useState<ReturnLog[]>([]);
-  const [farmInfo, setFarmInfo] = useState<any>(null);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [nightCheckSchedule, setNightCheckSchedule] = useState("21:00");
+  const [dashboard, setDashboard] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
-  // Use UserContext instead of localStorage
   const { user } = useUser();
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchDashboard = async () => {
       try {
         setIsLoading(true);
-        
-        // Fetch animals
-        const animalsData = await animalApi.getAll();
-        setAnimals(animalsData);
-        
-        // Fetch return logs for today
-        const today = new Date().toISOString().split('T')[0];
-        const returnLogsData = await returnLogApi.getByDate(today);
-        setReturnLogs(returnLogsData);
-        
-        // Fetch yields for today
-        const yieldsData = await yieldApi.getOverview();
-        setYields(yieldsData);
-        
-        // Fetch notifications
-        const notificationsData = await notificationApi.getAll();
-        setNotifications(notificationsData);
-        
-        // Fetch night check schedule for admin
-        if (user?.role === 'admin') {
-          try {
-            const scheduleData = await settingsApi.getNightCheckSchedule();
-            setNightCheckSchedule(scheduleData.schedule);
-          } catch (error: any) {
-            // Handle specific case for admin users who need to register their farm
-            if (error?.response?.data?.error === 'Please register your farm first') {
-              console.error("Error fetching night check schedule:", error);
-            }
-          }
-        }
-      } catch (error: any) {
+        const response = await api.get("/dashboard/overview");
+        setDashboard(response.data);
+      } catch (error) {
         console.error("Error fetching dashboard data:", error);
         toast.error("Failed to load dashboard data");
       } finally {
         setIsLoading(false);
       }
     };
-
-    fetchDashboardData();
+    fetchDashboard();
   }, [user?.role]);
-
-  useEffect(() => {
-    // Fetch farm information if user has a farm_id
-    const fetchFarmInfo = async () => {
-      if (user?.farm_id) {
-        try {
-          const farmData = await authApi.getFarmById(user.farm_id);
-          setFarmInfo(farmData);
-        } catch (error) {
-          console.error("Error fetching farm info:", error);
-          toast.error("Failed to load farm information");
-        }
-      }
-    };
-
-    fetchFarmInfo();
-  }, [user?.farm_id]);
-
-  // Calculate animal statistics
-  const animalStats = {
-    total: animals.length,
-    byType: {
-      Cow: animals.filter(a => a.type === "Cow").length,
-      Goat: animals.filter(a => a.type === "Goat").length,
-      Hen: animals.filter(a => a.type === "Hen").length
-    }
-  };
-
-  // Calculate return statistics
-  const returnStats = {
-    total: animals.length,
-    returned: returnLogs.filter(log => log.returned).length,
-    missing: animals.length - returnLogs.filter(log => log.returned).length,
-    returnRate: animals.length ? (returnLogs.filter(log => log.returned).length / animals.length) * 100 : 0
-  };
-
-  // Calculate yield statistics
-  const calculateTotalsByType = (stats: any) => {
-    if (!stats?.yields) return { cowMilk: 0, goatMilk: 0, henEggs: 0 };
-
-    return stats.yields.reduce((acc: any, yieldItem: any) => {
-      if (yieldItem.animal?.type === 'Cow') {
-        acc.cowMilk += Number(yieldItem.quantity);
-      } else if (yieldItem.animal?.type === 'Goat') {
-        acc.goatMilk += Number(yieldItem.quantity);
-      } else if (yieldItem.animal?.type === 'Hen') {
-        acc.henEggs += Number(yieldItem.quantity);
-      }
-      return acc;
-    }, { cowMilk: 0, goatMilk: 0, henEggs: 0 });
-  };
-
-  const todayYields = calculateTotalsByType(yields?.daily);
-
-  // Get recent notifications
-  const recentNotifications = notifications.slice(0, 3);
-  const unreadNotifications = notifications.filter(n => !n.isRead).length;
-
-  // Get fencing alerts
-  const fencingAlerts = notifications.filter(n => n.title === "Fencing Alert").slice(0, 3);
-  const nightReturnAlerts = notifications.filter(n => n.title === "Night Return Alert").slice(0, 3);
 
   if (isLoading) {
     return (
@@ -157,31 +54,10 @@ export function DashboardPage() {
               </div>
               <div className="space-y-2">
                 <h1 className="text-4xl font-bold tracking-tight text-gray-900">Overview</h1>
-                {farmInfo ? (
-                  <div className="flex items-center justify-center gap-2 text-lg text-gray-600">
-                    <Building2 className="h-5 w-5" />
-                    <span className="font-semibold text-green-700">{farmInfo.name}</span>
-                    {farmInfo.location && (
-                      <>
-                        <span className="text-gray-400">•</span>
-                        <div className="flex items-center gap-1 text-gray-500">
-                          <MapPin className="h-4 w-4" />
-                          <span>{farmInfo.location}</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ) : user?.farm_id ? (
-                  <div className="flex items-center justify-center gap-2 text-lg text-gray-600">
-                    <Building2 className="h-5 w-5 animate-pulse" />
-                    <span className="text-gray-500">Loading farm information...</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center gap-2 text-lg text-gray-600">
-                    <Building2 className="h-5 w-5" />
-                    <span className="text-gray-500">No farm assigned</span>
-                  </div>
-                )}
+                <div className="flex items-center justify-center gap-2 text-lg text-gray-600">
+                  <Building2 className="h-5 w-5 animate-pulse" />
+                  <span className="text-gray-500">Loading farm information...</span>
+                </div>
               </div>
             </div>
             <div className="p-8 flex flex-col items-center">
@@ -192,6 +68,61 @@ export function DashboardPage() {
       </div>
     );
   }
+
+  if (!dashboard) {
+    return <div className="p-8">No dashboard data available.</div>;
+  }
+
+  // Extract data from dashboard
+  const { animals, yields, returnLogs, notifications, nightCheckSchedule } = dashboard;
+
+  // Calculate animal statistics
+  const animalStats = {
+    total: animals.length,
+    byType: {
+      Cow: animals.filter((a: any) => a.type === "Cow").length,
+      Goat: animals.filter((a: any) => a.type === "Goat").length,
+      Hen: animals.filter((a: any) => a.type === "Hen").length,
+    },
+  };
+
+  // Calculate return statistics
+  const returnStats = {
+    total: animals.length,
+    returned: returnLogs.filter((log: any) => log.returned).length,
+    missing: animals.length - returnLogs.filter((log: any) => log.returned).length,
+    returnRate: animals.length
+      ? (returnLogs.filter((log: any) => log.returned).length / animals.length) * 100
+      : 0,
+  };
+
+  // Calculate yield statistics
+  const calculateTotalsByType = (stats: any) => {
+    if (!stats?.yields) return { cowMilk: 0, goatMilk: 0, henEggs: 0 };
+    return stats.yields.reduce(
+      (acc: any, yieldItem: any) => {
+        if (yieldItem.animal?.type === "Cow") {
+          acc.cowMilk += Number(yieldItem.quantity);
+        } else if (yieldItem.animal?.type === "Goat") {
+          acc.goatMilk += Number(yieldItem.quantity);
+        } else if (yieldItem.animal?.type === "Hen") {
+          acc.henEggs += Number(yieldItem.quantity);
+        }
+        return acc;
+      },
+      { cowMilk: 0, goatMilk: 0, henEggs: 0 }
+    );
+  };
+
+  const todayYields = calculateTotalsByType(yields);
+
+  // Get recent notifications
+  const recentNotifications = notifications.slice(0, 3);
+  const unreadNotifications = notifications.filter((n: any) => !n.isRead).length;
+
+  // Get fencing alerts
+  const fencingAlerts = notifications.filter((n: any) => n.title === "Fencing Alert").slice(0, 3);
+  const nightReturnAlerts = notifications.filter((n: any) => n.title === "Night Return Alert").slice(0, 3);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background pt-2 pb-4 px-2">
@@ -204,29 +135,24 @@ export function DashboardPage() {
             </div>
             <div className="space-y-2">
               <h1 className="text-4xl font-bold tracking-tight text-gray-900">Overview</h1>
-              {farmInfo ? (
+              {user?.farm_id ? (
                 <div className="flex items-center justify-center gap-2 text-lg text-gray-600">
                   <Building2 className="h-5 w-5" />
-                  <span className="font-semibold text-green-700">{farmInfo.name}</span>
-                  {farmInfo.location && (
+                  <span className="font-semibold text-green-700">{dashboard.farmInfo?.name}</span>
+                  {dashboard.farmInfo?.location && (
                     <>
                       <span className="text-gray-400">•</span>
                       <div className="flex items-center gap-1 text-gray-500">
                         <MapPin className="h-4 w-4" />
-                        <span>{farmInfo.location}</span>
+                        <span>{dashboard.farmInfo?.location}</span>
                       </div>
                     </>
                   )}
                 </div>
-              ) : user?.farm_id ? (
+              ) : (
                 <div className="flex items-center justify-center gap-2 text-lg text-gray-600">
                   <Building2 className="h-5 w-5 animate-pulse" />
                   <span className="text-gray-500">Loading farm information...</span>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center gap-2 text-lg text-gray-600">
-                  <Building2 className="h-5 w-5" />
-                  <span className="text-gray-500">No farm assigned</span>
                 </div>
               )}
             </div>
@@ -343,7 +269,7 @@ export function DashboardPage() {
                       </p>
                       {recentNotifications.length > 0 && (
                         <div className="mt-3 space-y-2">
-                          {recentNotifications.map((notification) => (
+                          {recentNotifications.map((notification: any, idx: number) => (
                             <div key={notification._id} className="text-xs p-2 bg-gray-50 rounded">
                               <div className="font-medium">{notification.title}</div>
                               <div className="text-gray-600 truncate">{notification.message}</div>
@@ -367,7 +293,7 @@ export function DashboardPage() {
                       </p>
                       {fencingAlerts.length > 0 && (
                         <div className="mt-3 space-y-2">
-                          {fencingAlerts.map((alert) => (
+                          {fencingAlerts.map((alert: any, idx: number) => (
                             <div key={alert._id} className="text-xs p-2 bg-yellow-50 rounded border border-yellow-200">
                               <div className="font-medium text-yellow-800">Fencing Alert</div>
                               <div className="text-yellow-700 truncate">{alert.message}</div>
@@ -401,7 +327,7 @@ export function DashboardPage() {
                       )}
                       {nightReturnAlerts.length > 0 && (
                         <div className="mt-3 space-y-2">
-                          {nightReturnAlerts.map((alert) => (
+                          {nightReturnAlerts.map((alert: any, idx: number) => (
                             <div key={alert._id} className="text-xs p-2 bg-red-50 rounded border border-red-200">
                               <div className="font-medium text-red-800">Night Return Alert</div>
                               <div className="text-red-700 truncate">{alert.message}</div>

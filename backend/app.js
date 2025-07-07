@@ -29,7 +29,7 @@ const settingRoutes = require('./routes/settingRoutes');
 const { scheduleNightCheck } = require('./scheduler/nightCheckScheduler');
 const verificationRoutes = require('./routes/verificationRoutes');
 const chatbotRoutes = require('./routes/chatbotRoutes');
-
+const dashboardRoutes = require('./routes/dashboardRoutes');
 
 
 const app = express();
@@ -65,7 +65,7 @@ app.use('/api/alerts', alertRoutes);
 app.use('/api/settings', settingRoutes);
 app.use('/api/verify', verificationRoutes);
 app.use('/api/chatbot', chatbotRoutes);
-
+app.use('/api/dashboard', dashboardRoutes);
 
 
 // 404 handler for all unmatched routes
@@ -90,7 +90,7 @@ app.use((req, res, next) => {
       ]
     });
   } else {
-    res.status(404).json({ 
+    res.status(404).json({
       error: 'Route not found',
       message: `The requested route ${req.method} ${req.originalUrl} does not exist`,
       note: 'This is a backend API server. For frontend routes, please use the React application.'

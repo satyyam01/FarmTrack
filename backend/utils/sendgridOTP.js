@@ -1,7 +1,10 @@
 const sgMail = require('@sendgrid/mail');
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
-const otpStore = new Map(); // In-memory. Use Redis for production.
+const Redis = require('ioredis');
+const redis = new Redis(process.env.REDIS_URL || undefined); // Use REDIS_URL env or default localhost
+
+const otpStore = new Map(); // Fallback in-memory. Use Redis for production.
 
 function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -9,9 +12,14 @@ function generateOTP() {
 
 async function sendOTP(email) {
   const otp = generateOTP();
+  const expiresInSec = 10 * 60; // 10 minutes
 
-  // Store OTP with expiry (10 mins)
-  otpStore.set(email, { otp, expiresAt: Date.now() + 10 * 60 * 1000 });
+  try {
+    await redis.set(`otp:${email}`, otp, 'EX', expiresInSec);
+  } catch (err) {
+    // Fallback to in-memory if Redis fails
+    otpStore.set(email, { otp, expiresAt: Date.now() + expiresInSec * 1000 });
+  }
 
   const msg = {
     to: email,
@@ -37,17 +45,25 @@ async function sendOTP(email) {
   return true;
 }
 
-function verifyOTP(email, inputOtp) {
-  const data = otpStore.get(email);
-  if (!data) return false;
-  if (Date.now() > data.expiresAt) {
-    otpStore.delete(email);
-    return false;
+async function verifyOTP(email, inputOtp) {
+  try {
+    const otp = await redis.get(`otp:${email}`);
+    if (!otp) return false;
+    const isValid = otp === inputOtp;
+    if (isValid) await redis.del(`otp:${email}`);
+    return isValid;
+  } catch (err) {
+    // Fallback to in-memory if Redis fails
+    const data = otpStore.get(email);
+    if (!data) return false;
+    if (Date.now() > data.expiresAt) {
+      otpStore.delete(email);
+      return false;
+    }
+    const isValid = data.otp === inputOtp;
+    if (isValid) otpStore.delete(email);
+    return isValid;
   }
-
-  const isValid = data.otp === inputOtp;
-  if (isValid) otpStore.delete(email);
-  return isValid;
 }
 
 module.exports = { sendOTP, verifyOTP }; 

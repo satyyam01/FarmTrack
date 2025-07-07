@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom"
 import { Navbar } from "@/components/Navbar"
+import { ChatbotWidget } from "@/components/ChatbotWidget"
 import { useUser } from "@/contexts/UserContext"
 
 export function DashboardLayout() {
@@ -16,6 +17,7 @@ export function DashboardLayout() {
       <main className="container mx-auto p-6">
         <Outlet />
       </main>
+      <ChatbotWidget />
     </div>
   )
 }

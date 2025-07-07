@@ -1,10 +1,19 @@
 const Medication = require('../models/medication');
 const Animal = require('../models/animal');
+const { getCache, setCache, delCache } = require('../utils/cache');
 
 // Get all medications for the user's farm
 exports.getAllMedications = async (req, res) => {
+  console.log('getAllMedications called');
   try {
     const farmId = req.user.farm_id;
+    const cacheKey = `page:vetcare:${farmId}`;
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      console.log('Serving vet care from cache for', cacheKey);
+      return res.json(cached);
+    }
+    console.log('Fetching vet care from DB for', cacheKey);
 
     const medications = await Medication.find()
       .populate({
@@ -15,6 +24,13 @@ exports.getAllMedications = async (req, res) => {
     // Filter out nulls (animals not in this user's farm)
     const filtered = medications.filter(m => m.animal_id !== null);
 
+    try {
+      await setCache(cacheKey, filtered, 60);
+      console.log('Set vet care cache for', cacheKey);
+    } catch (err) {
+      console.error('Error setting vet care cache:', err);
+    }
+
     res.json(filtered);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -23,13 +39,18 @@ exports.getAllMedications = async (req, res) => {
 
 // Get medications by animal (must belong to the user's farm)
 exports.getMedicationsByAnimal = async (req, res) => {
+  const animalId = req.params.animalId;
+  const cacheKey = `page:vetcare:history:medication:${animalId}`;
   try {
     const farmId = req.user.farm_id;
-    const animal = await Animal.findOne({ _id: req.params.animalId, farm_id: farmId });
-
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+    const animal = await Animal.findOne({ _id: animalId, farm_id: farmId });
     if (!animal) return res.status(404).json({ error: 'Animal not found or not in your farm' });
-
     const medications = await Medication.find({ animal_id: animal._id }).populate('animal_id');
+    await setCache(cacheKey, medications, 60);
     res.json(medications);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -61,6 +82,11 @@ exports.createMedication = async (req, res) => {
 
     const medication = new Medication({ animal_id, medicine_name, dosage, start_date, end_date, farm_id: farmId });
     await medication.save();
+
+    // Invalidate vet care cache for this farm
+    await delCache(`page:vetcare:${farmId}`);
+    // Invalidate medication history cache for this animal
+    await delCache(`page:vetcare:history:medication:${animal_id}`);
 
     res.status(201).json(medication);
   } catch (error) {
@@ -95,6 +121,12 @@ exports.updateMedication = async (req, res) => {
     }
 
     const updated = await Medication.findByIdAndUpdate(req.params.id, updateData, { new: true });
+
+    // Invalidate vet care cache for this farm
+    await delCache(`page:vetcare:${farmId}`);
+    // Invalidate medication history cache for this animal
+    await delCache(`page:vetcare:history:medication:${oldMedication.animal_id._id}`);
+
     res.json(updated);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -116,6 +148,12 @@ exports.deleteMedication = async (req, res) => {
     }
 
     await medication.deleteOne();
+
+    // Invalidate vet care cache for this farm
+    await delCache(`page:vetcare:${farmId}`);
+    // Invalidate medication history cache for this animal
+    await delCache(`page:vetcare:history:medication:${medication.animal_id._id}`);
+
     res.status(204).end();
   } catch (error) {
     res.status(400).json({ error: error.message });

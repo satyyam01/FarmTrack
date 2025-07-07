@@ -2,14 +2,15 @@
   "name": "farmtrack-root",
   "private": true,
   "scripts": {
-    "backend": "cd backend && npm start",
+    "backend": "cd backend && npm run dev",
     "frontend": "cd frontend && npm run dev",
-    "dev": "concurrently -k \"npm run backend\" \"npm run frontend\""
+    "dev": "concurrently --raw -k \"npm run backend\" \"npm run frontend\""
   },
   "devDependencies": {
     "concurrently": "^9.2.0"
   },
   "dependencies": {
-    "dotenv": "^17.0.1"
+    "dotenv": "^17.0.1",
+    "ioredis": "^5.6.1"
   }
 }

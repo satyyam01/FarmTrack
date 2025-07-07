@@ -1,5 +1,6 @@
 const Checkup = require('../models/checkup');
 const Animal = require('../models/animal');
+const { getCache, setCache, delCache } = require('../utils/cache');
 
 // Get all checkups (only for animals in the user's farm)
 exports.getAllCheckups = async (req, res) => {
@@ -19,20 +20,20 @@ exports.getAllCheckups = async (req, res) => {
   }
 };
 
-// Get checkups by animal (only if animal belongs to user's farm)
+// Get checkups by animal (must belong to the user's farm)
 exports.getCheckupsByAnimal = async (req, res) => {
+  const animalId = req.params.animalId;
+  const cacheKey = `page:vetcare:history:checkup:${animalId}`;
   try {
-    const farmId = req.user.farm_id;
-
-    const animal = await Animal.findOne({ _id: req.params.animalId, farm_id: farmId });
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      return res.json(cached);
+    }
+    const animal = await Animal.findOne({ _id: animalId, farm_id: req.user.farm_id });
     if (!animal) return res.status(404).json({ error: 'Animal not found or not in your farm' });
-
     const checkups = await Checkup.find({ animal_id: animal._id }).populate('animal_id');
-
-    // Optional deduplication (already unique if queried correctly)
-    const uniqueCheckups = Array.from(new Map(checkups.map(c => [c._id.toString(), c])).values());
-
-    res.json(uniqueCheckups);
+    await setCache(cacheKey, checkups, 60);
+    res.json(checkups);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

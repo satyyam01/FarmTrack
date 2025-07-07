@@ -1,10 +1,12 @@
 // controllers/verificationController.js
 const bcrypt = require('bcryptjs');
 const User = require('../models/user');
-const pendingUsers = require('../utils/pendingUsers');
 const { sendOTP, verifyOTP } = require('../utils/sendgridOTP');
-
-const pendingUserTimers = new Map(); // email -> timeout ref
+const {
+  setPendingUser,
+  getPendingUser,
+  deletePendingUser,
+} = require('../utils/pendingUsersRedis');
 
 // Step 1: Send OTP to Email
 exports.sendVerificationOTP = async (req, res) => {
@@ -20,8 +22,8 @@ exports.sendVerificationOTP = async (req, res) => {
       return res.status(400).json({ error: 'Email already registered' });
     }
 
-    // Store user temporarily in memory
-    pendingUsers.set(email, {
+    // Store user temporarily in Redis
+    await setPendingUser(email, {
       name,
       email,
       password,
@@ -29,16 +31,6 @@ exports.sendVerificationOTP = async (req, res) => {
       farm_id,
       timestamp: Date.now()
     });
-
-    // Set a timeout to delete pending user after 10 minutes
-    if (pendingUserTimers.has(email)) {
-      clearTimeout(pendingUserTimers.get(email));
-    }
-    const timer = setTimeout(() => {
-      pendingUsers.delete(email);
-      pendingUserTimers.delete(email);
-    }, 10 * 60 * 1000); // 10 minutes
-    pendingUserTimers.set(email, timer);
 
     // Send OTP using SendGrid
     await sendOTP(email);
@@ -54,13 +46,13 @@ exports.verifyOTPAndRegister = async (req, res) => {
   try {
     const { email, otp } = req.body;
 
-    const pendingUser = pendingUsers.get(email);
+    const pendingUser = await getPendingUser(email);
     if (!pendingUser) {
       return res.status(404).json({ error: 'No pending registration found for this email' });
     }
 
     // Verify OTP using SendGrid system
-    const isValidOTP = verifyOTP(email, otp);
+    const isValidOTP = await verifyOTP(email, otp);
     if (!isValidOTP) {
       return res.status(400).json({ error: 'Invalid or expired OTP' });
     }
@@ -75,11 +67,7 @@ exports.verifyOTPAndRegister = async (req, res) => {
     });
 
     await user.save();
-    pendingUsers.delete(email); // cleanup
-    if (pendingUserTimers.has(email)) {
-      clearTimeout(pendingUserTimers.get(email));
-      pendingUserTimers.delete(email);
-    }
+    await deletePendingUser(email); // cleanup
 
     res.status(201).json({ message: 'User registered successfully. Please login.' });
   } catch (error) {

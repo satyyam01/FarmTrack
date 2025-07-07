@@ -1,6 +1,10 @@
 const Setting = require('../models/setting');
 const { updateSchedule } = require('../scheduler/nightCheckScheduler');
-const pendingEmailChanges = require('../utils/pendingEmailChanges');
+const {
+  setPendingEmailChange,
+  getPendingEmailChange,
+  deletePendingEmailChange,
+} = require('../utils/pendingEmailChangesRedis');
 const { sendOTP, verifyOTP } = require('../utils/sendgridOTP');
 const User = require('../models/user');
 
@@ -179,7 +183,7 @@ const requestEmailChangeOTP = async (req, res) => {
 
     // Generate and send OTP
     await sendOTP(newEmail);
-    pendingEmailChanges.set(userId, {
+    await setPendingEmailChange(userId, {
       newEmail,
       expiresAt: Date.now() + 10 * 60 * 1000 // 10 min expiry
     });
@@ -194,20 +198,20 @@ const verifyEmailChangeOTP = async (req, res) => {
   try {
     const userId = req.user.id;
     const { newEmail, otp } = req.body;
-    const pending = pendingEmailChanges.get(userId);
+    const pending = await getPendingEmailChange(userId);
     if (!pending || pending.newEmail !== newEmail) {
       return res.status(400).json({ error: 'No pending email change for this user/email' });
     }
     if (Date.now() > pending.expiresAt) {
-      pendingEmailChanges.delete(userId);
+      await deletePendingEmailChange(userId);
       return res.status(400).json({ error: 'OTP expired' });
     }
     // Use verifyOTP from sendgridOTP.js
-    const isValid = verifyOTP(newEmail, otp);
+    const isValid = await verifyOTP(newEmail, otp);
     if (!isValid) return res.status(400).json({ error: 'Invalid OTP' });
     // Update email in DB
     await User.findByIdAndUpdate(userId, { email: newEmail });
-    pendingEmailChanges.delete(userId);
+    await deletePendingEmailChange(userId);
     res.json({ message: 'Email updated successfully.' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to verify OTP' });
