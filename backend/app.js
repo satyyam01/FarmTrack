@@ -47,9 +47,11 @@ app.use(cors({
     'https://farmtrack.satyyam.site', // production
     'http://localhost:5173'           // local dev
   ],
+  origin: allowedOrigins,
   credentials: true
 }));
-app.use(bodyParser.json());
+
+app.use(express.json());
 
 // Routes
 app.use('/api/auth', authRoutes);
