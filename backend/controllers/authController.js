@@ -162,6 +162,12 @@ exports.updateProfile = async (req, res) => {
     // Generate new token with updated user data
     const token = generateToken(updatedUser);
 
+    // Invalidate dashboard cache for this user's farm if applicable
+    if (updatedUser.farm_id) {
+      const { delCache } = require('../utils/cache');
+      await delCache(`page:dashboard:overview:${updatedUser.farm_id}`);
+    }
+
     res.json({
       message: 'Profile updated successfully',
       user: {

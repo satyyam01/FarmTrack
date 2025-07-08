@@ -90,6 +90,10 @@ exports.verifyPayment = async (req, res) => {
     farm.subscription = subscription._id;
     await farm.save();
 
+    // Invalidate dashboard cache for this farm
+    const { delCache } = require('../utils/cache');
+    await delCache(`page:dashboard:overview:${farmId}`);
+
     res.status(200).json({ success: true, message: 'Payment verified and premium activated', farm, subscription });
   } catch (error) {
     console.error('Razorpay payment verification error:', error);

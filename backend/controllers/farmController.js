@@ -132,6 +132,10 @@ exports.updateFarm = async (req, res) => {
       return res.status(404).json({ error: 'Farm not found' });
     }
 
+    // Invalidate dashboard cache for this farm
+    const { delCache } = require('../utils/cache');
+    await delCache(`page:dashboard:overview:${id}`);
+
     res.json({
       message: 'Farm updated successfully',
       farm: updatedFarm
