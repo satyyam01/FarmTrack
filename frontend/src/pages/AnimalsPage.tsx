@@ -24,6 +24,8 @@ import {
   AlertDialogTitle,
 } from "../components/ui/alert-dialog";
 import { PawPrint } from "lucide-react";
+import { useLocation } from "react-router-dom";
+import api from "../services/api";
 
 // Helper function to group animals by type
 const animalTypes: AnimalType[] = ["Cow", "Goat", "Hen", "Horse", "Sheep"];
@@ -64,6 +66,9 @@ export function AnimalsPage() {
   const [animalToDelete, setAnimalToDelete] = useState<Animal | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [showLimitAlert, setShowLimitAlert] = useState(false);
+  const [animalLimit, setAnimalLimit] = useState(10);
+  const [isPremium, setIsPremium] = useState(false);
 
   // Fetch animals from API
   useEffect(() => {
@@ -82,6 +87,18 @@ export function AnimalsPage() {
     };
 
     fetchAnimals();
+    // Fetch farm info for animal limit and premium status
+    async function fetchFarmInfo() {
+      try {
+        const res = await api.get("/dashboard/overview");
+        setAnimalLimit(res.data.farmInfo?.animalLimit ?? 10);
+        setIsPremium(res.data.farmInfo?.isPremium ?? false);
+      } catch {
+        setAnimalLimit(10);
+        setIsPremium(false);
+      }
+    }
+    fetchFarmInfo();
   }, []);
 
   // Get user role on component mount
@@ -112,6 +129,10 @@ export function AnimalsPage() {
   }, [animals, selectedType, searchQuery]);
 
   const handleAddAnimal = () => {
+    if (!isPremium && animals.length >= animalLimit) {
+      setShowLimitAlert(true);
+      return;
+    }
     setEditingAnimal(undefined);
     setIsDialogOpen(true);
   };
@@ -166,9 +187,13 @@ export function AnimalsPage() {
         toast.success("Animal added successfully");
       }
       setIsDialogOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving animal:", error);
+      if (error?.response?.data?.error && error.response.data.error.includes('Tag number')) {
+        toast.error(error.response.data.error);
+      } else {
       toast.error("Failed to save animal");
+      }
     }
   };
 
@@ -287,6 +312,25 @@ export function AnimalsPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={showLimitAlert} onOpenChange={setShowLimitAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-yellow-700"><PawPrint className="h-5 w-5 text-yellow-500" /> Max Animal Limit Reached</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have reached the maximum of {animalLimit} animals allowed on the free plan.<br />
+              <span className="font-semibold text-yellow-800">Switch to Pro to add more animals!</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Close</AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button variant="default" className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-bold" onClick={() => window.location.href = '/dashboard'}>
+                Upgrade to Pro
+              </Button>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

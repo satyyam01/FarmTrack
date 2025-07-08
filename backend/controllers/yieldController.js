@@ -1,5 +1,6 @@
 const Yield = require('../models/yield');
 const Animal = require('../models/animal');
+const Farm = require('../models/farm');
 const { startOfDay, endOfDay, startOfWeek, startOfMonth, parseISO } = require('date-fns');
 const { chunkYieldRecord } = require('../utils/chunker');
 const axios = require('axios');
@@ -7,6 +8,7 @@ const { Pinecone } = require('@pinecone-database/pinecone');
 const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
 const PINECONE_INDEX = process.env.PINECONE_INDEX;
 const COHERE_API_KEY = process.env.COHERE_API_KEY;
+const { getCache, setCache, delCache } = require('../utils/cache');
 
 // Get all yields
 exports.getAllYields = async (req, res) => {
@@ -74,6 +76,14 @@ exports.createYield = async (req, res) => {
     const populated = await Yield.findById(newYield._id).populate('animal_id');
     res.status(201).json(populated);
 
+    // Invalidate today's production overview cache
+    const today = getTodayString();
+    if (date === today) {
+      await delCache(`page:production:overview:${farmId}:${today}`);
+    }
+    // Invalidate dashboard overview cache
+    await delCache(`page:dashboard:overview:${farmId}`);
+
     // Auto-embed and upload to Pinecone for owners only
     if (req.user.role === 'admin') {
       upsertYieldToPinecone(populated);
@@ -127,6 +137,14 @@ exports.updateYield = async (req, res) => {
     const populated = await Yield.findById(updated._id).populate('animal_id');
     res.json(populated);
 
+    // Invalidate today's production overview cache
+    const today = getTodayString();
+    if ((date && date === today) || (!date && existingYield.date === today)) {
+      await delCache(`page:production:overview:${farmId}:${today}`);
+    }
+    // Invalidate dashboard overview cache
+    await delCache(`page:dashboard:overview:${farmId}`);
+
     // Auto-embed and upload to Pinecone for owners only
     if (req.user.role === 'admin') {
       upsertYieldToPinecone(populated);
@@ -145,6 +163,13 @@ exports.deleteYield = async (req, res) => {
       return res.status(404).json({ error: 'Yield not found' });
     }
     res.json({ message: 'Yield deleted' });
+    // Invalidate today's production overview cache
+    const today = getTodayString();
+    if (deleted.date === today) {
+      await delCache(`page:production:overview:${deleted.farm_id}:${today}`);
+    }
+    // Invalidate dashboard overview cache
+    await delCache(`page:dashboard:overview:${deleted.farm_id}`);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -262,6 +287,13 @@ exports.getOverview = async (req, res) => {
 
     // If date range is provided, filter by date strings
     if (startDate && endDate && startDate === endDate) {
+      // Cache only for today
+      const today = getTodayString();
+      if (startDate === today) {
+        const cacheKey = `page:production:overview:${farmId}:${today}`;
+        const cached = await getCache(cacheKey);
+        if (cached) return res.json(cached);
+      }
       // Use selected date as reference for week/month
       const refDate = startDate;
       const monday = formatDateString(getMonday(refDate));
@@ -280,12 +312,17 @@ exports.getOverview = async (req, res) => {
         ...yieldFilter,
         date: { $gte: firstOfMonth, $lte: lastOfMonth }
       }).populate('animal_id').sort({ date: -1 });
-      res.json({
+      const result = {
         daily: calculateStats(dailyYields, animals),
         weekly: calculateStats(weeklyYields, animals),
         monthly: calculateStats(monthlyYields, animals),
         animals,
-      });
+      };
+      if (startDate === today) {
+        const cacheKey = `page:production:overview:${farmId}:${today}`;
+        await setCache(cacheKey, result, 60);
+      }
+      res.json(result);
       return;
     } else if (startDate || endDate) {
       yieldFilter.date = {};
@@ -354,6 +391,12 @@ async function getCohereEmbedding(text) {
 
 async function upsertYieldToPinecone(yieldDoc) {
   if (!yieldDoc || !yieldDoc.animal_id) return;
+  // Only upsert for Pro farms
+  const farm = await Farm.findById(yieldDoc.farm_id);
+  if (!farm || !farm.isPremium || !farm.premiumExpiry || new Date(farm.premiumExpiry) < Date.now()) {
+    console.log(`⛔ Skipping Pinecone upsert: Farm ${yieldDoc.farm_id} is not Pro.`);
+    return;
+  }
   const chunk = chunkYieldRecord(yieldDoc);
   if (!chunk) return;
   const embedding = await getCohereEmbedding(chunk);

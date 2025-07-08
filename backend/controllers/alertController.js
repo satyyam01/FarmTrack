@@ -3,6 +3,7 @@ const Animal = require('../models/animal');
 const ReturnLog = require('../models/returnLog');
 const User = require('../models/user');
 const { sendEmail } = require('../utils/emailService');
+const { delCache } = require('../utils/cache');
 const { 
   generateAlertEmail, 
   generateFencingAlertEmail, 
@@ -49,6 +50,9 @@ exports.barnCheckAlert = async (req, res) => {
         message, 
         farm_id 
       });
+
+      // Invalidate dashboard overview cache for this farm
+      await delCache(`page:dashboard:overview:${farm_id}`);
 
       alertsSent.push(notification);
 
@@ -98,6 +102,9 @@ exports.fencingAlert = async (req, res) => {
       message: alertMessage,
       farm_id: req.user.farm_id
     });
+
+    // Invalidate dashboard overview cache for this farm
+    await delCache(`page:dashboard:overview:${req.user.farm_id}`);
 
     // Send email with improved template
     const user = await User.findById(req.user.id);

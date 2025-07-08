@@ -21,7 +21,6 @@ const yieldRoutes = require('./routes/yieldRoutes');
 const medicationRoutes = require('./routes/medicationRoutes');
 const checkupRoutes = require('./routes/checkupRoutes');
 const returnLogRoutes = require('./routes/returnLogRoutes');
-const simulationRoutes = require('./routes/simulationRoutes');
 const farmRoutes = require('./routes/farmRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const alertRoutes = require('./routes/alertRoutes');
@@ -29,7 +28,8 @@ const settingRoutes = require('./routes/settingRoutes');
 const { scheduleNightCheck } = require('./scheduler/nightCheckScheduler');
 const verificationRoutes = require('./routes/verificationRoutes');
 const chatbotRoutes = require('./routes/chatbotRoutes');
-
+const dashboardRoutes = require('./routes/dashboardRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
 
 
 const app = express();
@@ -58,14 +58,14 @@ app.use('/api/yields', yieldRoutes);
 app.use('/api/medications', medicationRoutes);
 app.use('/api/checkups', checkupRoutes);
 app.use('/api/returnlogs', returnLogRoutes);
-app.use('/api/simulate', simulationRoutes);
 app.use('/api/farms', farmRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/alerts', alertRoutes);
 app.use('/api/settings', settingRoutes);
 app.use('/api/verify', verificationRoutes);
 app.use('/api/chatbot', chatbotRoutes);
-
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/payments', paymentRoutes);
 
 
 // 404 handler for all unmatched routes
@@ -82,7 +82,6 @@ app.use((req, res, next) => {
         '/api/medications',
         '/api/checkups',
         '/api/returnlogs',
-        '/api/simulate',
         '/api/farms',
         '/api/notifications',
         '/api/alerts',
@@ -90,7 +89,7 @@ app.use((req, res, next) => {
       ]
     });
   } else {
-    res.status(404).json({ 
+    res.status(404).json({
       error: 'Route not found',
       message: `The requested route ${req.method} ${req.originalUrl} does not exist`,
       note: 'This is a backend API server. For frontend routes, please use the React application.'

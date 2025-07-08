@@ -115,20 +115,6 @@ export function Navbar() {
                 <span role="img" aria-label="watchguard"></span> Watchguard
               </Link>
             )}
-            {/* Simulator link only for admins */}
-            {user?.role === 'admin' && (
-              <Link
-                to="/dashboard/simulation"
-                className={cn(
-                  "px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1 transition-colors",
-                  location.pathname === "/dashboard/simulation"
-                    ? "bg-accent text-primary border border-primary"
-                    : "text-muted-foreground hover:text-primary hover:bg-accent"
-                )}
-              >
-                <Cpu className="h-4 w-4" /> Simulator
-              </Link>
-            )}
           </div>
         )}
         

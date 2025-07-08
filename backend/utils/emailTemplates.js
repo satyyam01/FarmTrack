@@ -103,7 +103,8 @@ exports.generateFencingAlertEmail = (animalName, tagNumber) => {
 
 exports.generateNightReturnAlertEmail = (missingAnimals, date) => {
   const title = 'Night Return Alert';
-  const message = `🌙 The following animals did not return to the barn tonight (${date}):\n${missingAnimals.join(', ')}`;
+  // Render animals as a bullet list
+  const message = `🌙 The following animals did not return to the barn tonight (${date}):<ul style="margin-top:8px;margin-bottom:8px;padding-left:24px;">${missingAnimals.map(animal => `<li>${animal}</li>`).join('')}</ul>`;
   return this.generateAlertEmail(title, message, 'night-return');
 };
 

@@ -3,15 +3,22 @@ const Yield = require('../models/yield');
 const Medication = require('../models/medication');
 const Checkup = require('../models/checkup');
 const ReturnLog = require('../models/returnLog');
+const Farm = require('../models/farm');
+const { getCache, setCache, delCache } = require('../utils/cache');
 
 // GET all animals belonging to the user's farm
 exports.getAllAnimals = async (req, res) => {
   try {
+    const cacheKey = `page:livestock:${req.user.farm_id}`;
+    const cached = await getCache(cacheKey);
+    if (cached) return res.json(cached);
+
     const animals = await Animal.find({ farm_id: req.user.farm_id })
       .populate('yields')
       .populate('medications')
       .populate('checkups')
       .populate('return_logs');
+    await setCache(cacheKey, animals, 60); // 1 min TTL
     res.json(animals);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -39,6 +46,16 @@ exports.createAnimal = async (req, res) => {
   try {
     const { yields, medications, checkups, return_logs, ...animalData } = req.body;
 
+    // Enforce animal limit for the farm
+    const farm = await Farm.findById(req.user.farm_id);
+    if (!farm) {
+      return res.status(400).json({ error: 'Farm not found' });
+    }
+    const animalCount = await Animal.countDocuments({ farm_id: req.user.farm_id });
+    if (animalCount >= (farm.animalLimit || 10)) {
+      return res.status(403).json({ error: `Animal limit reached (${farm.animalLimit || 10}). Upgrade to Pro for more.` });
+    }
+
     const requiredFields = ['tag_number', 'name', 'type', 'age', 'gender'];
     for (let field of requiredFields) {
       if (!animalData[field]) {
@@ -58,7 +75,7 @@ exports.createAnimal = async (req, res) => {
     }
 
     const animal = await Animal.create({ ...animalData, farm_id: req.user.farm_id });
-    
+
     if (yields?.length > 0) {
       await Yield.insertMany(yields.map(y => ({ ...y, animal_id: animal._id, farm_id: req.user.farm_id })));
     }
@@ -77,6 +94,9 @@ exports.createAnimal = async (req, res) => {
       .populate('medications')
       .populate('checkups')
       .populate('return_logs');
+
+    // Invalidate livestock cache for this farm
+    await delCache(`page:livestock:${req.user.farm_id}`);
 
     res.status(201).json(fullAnimal);
   } catch (error) {
@@ -100,6 +120,8 @@ exports.updateAnimal = async (req, res) => {
     );
 
     if (!animal) return res.status(404).json({ error: 'Animal not found or not in your farm' });
+    // Invalidate livestock cache for this farm
+    await delCache(`page:livestock:${req.user.farm_id}`);
     res.json(animal);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -119,6 +141,9 @@ exports.deleteAnimal = async (req, res) => {
       ReturnLog.deleteMany({ animal_id: animal._id }),
       Animal.findByIdAndDelete(animal._id)
     ]);
+
+    // Invalidate livestock cache for this farm
+    await delCache(`page:livestock:${req.user.farm_id}`);
 
     res.json({ message: 'Animal and all related records deleted' });
   } catch (error) {

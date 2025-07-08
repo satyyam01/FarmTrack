@@ -1,10 +1,12 @@
 // controllers/verificationController.js
 const bcrypt = require('bcryptjs');
 const User = require('../models/user');
-const pendingUsers = require('../utils/pendingUsers');
 const { sendOTP, verifyOTP } = require('../utils/sendgridOTP');
-
-const pendingUserTimers = new Map(); // email -> timeout ref
+const {
+  setPendingUser,
+  getPendingUser,
+  deletePendingUser,
+} = require('../utils/pendingUsersRedis');
 
 // Step 1: Send OTP to Email
 exports.sendVerificationOTP = async (req, res) => {
@@ -20,8 +22,20 @@ exports.sendVerificationOTP = async (req, res) => {
       return res.status(400).json({ error: 'Email already registered' });
     }
 
-    // Store user temporarily in memory
-    pendingUsers.set(email, {
+    // Pro-only multi-role check BEFORE sending OTP
+    if (role !== 'admin') {
+      const Farm = require('../models/farm');
+      const farm = await Farm.findById(farm_id);
+      if (!farm) {
+        return res.status(400).json({ error: 'Invalid farm ID' });
+      }
+      if (!farm.isPremium || !farm.premiumExpiry || new Date(farm.premiumExpiry) < Date.now()) {
+        return res.status(403).json({ error: 'Multi-role users are only allowed for premium farm, ask your farm owner to upgrade today!' });
+      }
+    }
+
+    // Store user temporarily in Redis
+    await setPendingUser(email, {
       name,
       email,
       password,
@@ -29,16 +43,6 @@ exports.sendVerificationOTP = async (req, res) => {
       farm_id,
       timestamp: Date.now()
     });
-
-    // Set a timeout to delete pending user after 10 minutes
-    if (pendingUserTimers.has(email)) {
-      clearTimeout(pendingUserTimers.get(email));
-    }
-    const timer = setTimeout(() => {
-      pendingUsers.delete(email);
-      pendingUserTimers.delete(email);
-    }, 10 * 60 * 1000); // 10 minutes
-    pendingUserTimers.set(email, timer);
 
     // Send OTP using SendGrid
     await sendOTP(email);
@@ -54,18 +58,29 @@ exports.verifyOTPAndRegister = async (req, res) => {
   try {
     const { email, otp } = req.body;
 
-    const pendingUser = pendingUsers.get(email);
+    const pendingUser = await getPendingUser(email);
     if (!pendingUser) {
       return res.status(404).json({ error: 'No pending registration found for this email' });
     }
 
     // Verify OTP using SendGrid system
-    const isValidOTP = verifyOTP(email, otp);
+    const isValidOTP = await verifyOTP(email, otp);
     if (!isValidOTP) {
       return res.status(400).json({ error: 'Invalid or expired OTP' });
     }
 
     // Create user in DB
+    // Enforce Pro-only registration for non-owner roles
+    if (pendingUser.role !== 'admin') {
+      const Farm = require('../models/farm');
+      const farm = await Farm.findById(pendingUser.farm_id);
+      if (!farm) {
+        return res.status(400).json({ error: 'Invalid farm ID' });
+      }
+      if (!farm.isPremium || !farm.premiumExpiry || new Date(farm.premiumExpiry) < Date.now()) {
+        return res.status(403).json({ error: 'Only Pro farms can register non-owner roles.' });
+      }
+    }
     const user = new User({
       name: pendingUser.name,
       email: pendingUser.email,
@@ -75,11 +90,7 @@ exports.verifyOTPAndRegister = async (req, res) => {
     });
 
     await user.save();
-    pendingUsers.delete(email); // cleanup
-    if (pendingUserTimers.has(email)) {
-      clearTimeout(pendingUserTimers.get(email));
-      pendingUserTimers.delete(email);
-    }
+    await deletePendingUser(email); // cleanup
 
     res.status(201).json({ message: 'User registered successfully. Please login.' });
   } catch (error) {

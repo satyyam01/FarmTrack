@@ -34,22 +34,27 @@ export function LandingPage() {
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-16">
         <div className="text-center max-w-4xl mx-auto">
-          <Badge variant="secondary" className="mb-4">
-            🚀 Modern Farm Management
-          </Badge>
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <Badge variant="secondary" className="bg-yellow-400/20 text-yellow-700 font-semibold text-base px-3 py-1 rounded-full">Pro</Badge>
+            <span className="text-green-700 font-semibold">Now with AI Assistant!</span>
+          </div>
           <h1 className="text-5xl font-bold text-gray-900 mb-6">
             Streamline Your Farm Operations with
             <span className="text-green-600"> FarmTrack</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            Comprehensive farm management platform for tracking animals, yields, health records, 
-            and night returns. Built for modern farmers who demand efficiency and precision.
+            Comprehensive farm management platform for tracking animals, yields, health records, and night returns. <span className="font-semibold text-green-700">Upgrade to Pro</span> for advanced features, multi-role management, and your own AI assistant.
           </p>
           <div className="flex items-center justify-center gap-4">
             <Link to="/login?tab=signup">
-              <Button size="lg" className="text-lg px-8 py-3">
+              <Button size="lg" className="text-lg px-8 py-3 bg-green-600 hover:bg-green-700">
                 Start Free Trial
                 <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+            <Link to="/login?tab=signup">
+              <Button size="lg" variant="outline" className="text-lg px-8 py-3 border-green-600 text-green-700 hover:bg-green-50">
+                Upgrade to Pro
               </Button>
             </Link>
           </div>
@@ -63,8 +68,7 @@ export function LandingPage() {
             Everything You Need to Manage Your Farm
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            From animal tracking to yield management, FarmTrack provides all the tools 
-            you need to run your farm efficiently.
+            From animal tracking to yield management, FarmTrack provides all the tools you need to run your farm efficiently.
           </p>
         </div>
 
@@ -234,6 +238,89 @@ export function LandingPage() {
                   Data visualization
                 </li>
               </ul>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* Pro Features Section */}
+      <section className="container mx-auto px-4 py-16">
+        <div className="max-w-3xl mx-auto text-center mb-10">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Badge variant="secondary" className="bg-yellow-400/20 text-yellow-700 font-semibold text-base px-3 py-1 rounded-full">Pro</Badge>
+            <span className="text-green-700 font-semibold">Premium</span>
+          </div>
+          <h2 className="text-3xl font-bold text-gray-900 mb-3">Unlock FarmTrack Pro</h2>
+          <p className="text-lg text-gray-600">Supercharge your farm with advanced features designed for growing operations and ambitious farmers.</p>
+        </div>
+        <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-8">
+          <Card className="shadow-xl border-0 bg-gradient-to-br from-yellow-50 to-green-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-yellow-700">
+                <Badge variant="secondary" className="bg-yellow-400/80 text-yellow-900 font-semibold px-2 py-1">Pro</Badge>
+                FarmTrack Pro Benefits
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-3 text-base text-gray-700 text-left">
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <span>Higher animal limits for large farms</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <span>Multi-role management (owners, workers, veterinarians)</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <span>RAG AI Assistant for instant farm insights</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <span>Priority support</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <span>Advanced analytics & reporting</span>
+                </li>
+              </ul>
+              <div className="mt-8 text-center">
+                <Link to="/login?tab=signup">
+                  <Button size="lg" className="bg-yellow-500 hover:bg-yellow-600 text-white text-lg px-8 py-3 rounded-full shadow-lg">Upgrade to Pro</Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* AI Assistant Highlight */}
+          <Card className="shadow-xl border-0 bg-gradient-to-br from-blue-50 to-green-50 flex flex-col justify-between">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-blue-700">
+                <span className="text-2xl">💬</span>
+                AI Farm Assistant
+              </CardTitle>
+              <CardDescription>Get instant answers, smart suggestions, and farm insights 24/7 with your own AI-powered assistant (Pro only).</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-white rounded-lg shadow p-4 mb-4 border border-blue-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-2xl">💬</span>
+                  <span className="font-semibold text-blue-700">FarmTrack Assistant</span>
+                </div>
+                <div className="bg-blue-50 rounded-lg p-3 text-left text-blue-900 text-sm mb-2">
+                  <span className="font-semibold">"Hi! I am your FarmTrack Assistant. How can I help you today?"</span>
+                </div>
+                <ul className="list-disc list-inside text-blue-900 text-sm ml-2">
+                  <li>Ask about animal health, yields, or farm stats</li>
+                  <li>Get step-by-step guidance for farm tasks</li>
+                  <li>Receive smart alerts and recommendations</li>
+                </ul>
+              </div>
+              <div className="text-center">
+                <Link to="/login?tab=signup">
+                  <Button size="sm" variant="outline" className="border-blue-600 text-blue-700 hover:bg-blue-50">Try the AI Assistant</Button>
+                </Link>
+              </div>
             </CardContent>
           </Card>
         </div>

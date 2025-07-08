@@ -66,16 +66,16 @@ export function LoginPage() {
       // Store token and user data
       setToken(token)
       setUser(user)
-      
-      // Redirect based on user role
-      if (user.role === 'admin' && !user.farm_id) {
-        toast.success("Welcome! Please register your farm.")
-        // Use window.location.href to bypass AuthGuard redirect logic
-        window.location.href = "/register"
-      } else {
-        toast.success("Login successful!")
-        navigate("/dashboard")
-      }
+      // Wait for context/localStorage to update before navigating
+      setTimeout(() => {
+        if (user.role === 'admin' && !user.farm_id) {
+          toast.success("Welcome! Please register your farm.")
+          navigate("/register")
+        } else {
+          toast.success("Login successful!")
+          navigate("/dashboard")
+        }
+      }, 0)
     } catch (err: any) {
       setError(err?.response?.data?.error || "Login failed")
     } finally {
@@ -171,7 +171,7 @@ export function LoginPage() {
                     type="email"
                     placeholder="Enter your email"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) => { setFormData({ ...formData, email: e.target.value }); if (error) setError(""); }}
                     required
                   />
                 </div>
@@ -183,7 +183,7 @@ export function LoginPage() {
                       type={showPassword ? "text" : "password"}
                       placeholder="Enter your password"
                       value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      onChange={(e) => { setFormData({ ...formData, password: e.target.value }); if (error) setError(""); }}
                       required
                     />
                     <button

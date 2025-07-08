@@ -14,6 +14,25 @@ const farmSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'user',
     required: true
+  },
+  isPremium: {
+    type: Boolean,
+    default: false
+  },
+  premiumExpiry: {
+    type: Date
+  },
+  animalLimit: {
+    type: Number,
+    default: 10
+  },
+  allowedRoles: [{
+    type: String,
+    enum: ['owner', 'vet', 'worker']
+  }],
+  subscription: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'subscription'
   }
 }, {
   timestamps: true
