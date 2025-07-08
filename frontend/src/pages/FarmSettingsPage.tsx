@@ -240,6 +240,29 @@ export function FarmSettingsPage() {
                 </div>
               </div>
 
+              {/* Farm Status Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Farm Status</h3>
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex flex-col gap-2">
+                  {farmInfo.isPremium && farmInfo.subscription ? (
+                    <>
+                      <div className="flex items-center gap-2">
+                        {/* <span className="font-semibold text-green-700">Pro</span> */}
+                        <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full">Pro Active</span>
+                      </div>
+                      <div className="text-sm text-gray-700">
+                        <span className="font-medium">Valid till:</span> {farmInfo.premiumExpiry ? new Date(farmInfo.premiumExpiry).toLocaleDateString() : 'N/A'}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-600">Basic</span>
+                      {/* <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">Free</span> */}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Farm ID Section */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold">Farm ID</h3>

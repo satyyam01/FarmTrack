@@ -4,6 +4,7 @@ const chrono = require('chrono-node');
 const { Pinecone } = require('@pinecone-database/pinecone');
 const Yield = require('../models/yield');
 const Animal = require('../models/animal');
+const Farm = require('../models/farm');
 const { startOfWeek, endOfWeek, subWeeks, startOfMonth, endOfMonth, subMonths } = require('date-fns');
 const { askUsingRAG } = require('../utils/ragAnswer');
 
@@ -128,6 +129,11 @@ exports.askYieldQuestion = async (req, res) => {
       }
     }
     // Otherwise, use RAG
+    // Enforce Pro-only access for RAG AI assistant
+    const farm = await Farm.findById(farmId);
+    if (!farm || !farm.isPremium || !farm.premiumExpiry || new Date(farm.premiumExpiry) < Date.now()) {
+      return res.status(403).json({ error: 'RAG AI assistant is available only for Pro farms. Upgrade to Pro to use this feature.' });
+    }
     const ragAnswer = await askUsingRAG(question, farmId);
     return res.json({ answer: ragAnswer });
   } catch (error) {

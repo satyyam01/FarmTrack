@@ -9,7 +9,6 @@ import { HealthRecordPage } from "./pages/HealthRecordPage"
 import { YieldsPage } from "./pages/YieldsPage"
 import { ReturnLogsPage } from "./pages/ReturnLogsPage"
 import { NightReturnTrackerPage } from "./pages/NightReturnTrackerPage"
-import { SimulationPage } from "./pages/SimulationPage"
 import { FarmSettingsPage } from "./pages/FarmSettingsPage"
 import { ProfileSettingsPage } from "./pages/ProfileSettingsPage"
 import NotFoundPage from "./pages/NotFoundPage"
@@ -46,11 +45,6 @@ function App() {
             <Route path="night-returns" element={
               <ProtectedRoute requiredRole="admin,farm_worker,user">
                 <NightReturnTrackerPage />
-              </ProtectedRoute>
-            } />
-            <Route path="simulation" element={
-              <ProtectedRoute requireAdmin={true}>
-                <SimulationPage />
               </ProtectedRoute>
             } />
             <Route path="farm-settings" element={

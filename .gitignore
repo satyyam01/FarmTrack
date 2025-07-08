@@ -215,3 +215,15 @@ local/
 # Backend scripts and migrations (not required for dev/deployment)
 backend/scripts/
 backend/migrations/
+
+# Ignore old locations of testEnv.js and getFarmId.js
+backend/testEnv.js
+backend/getFarmId.js
+
+# Do not ignore the new locations
+!testing/testEnv.js
+!backend/scripts/getFarmId.js
+
+# (Optional) If you want to ignore all of testing/ or scripts/, comment out or remove the following lines if present:
+# testing/
+# backend/scripts/

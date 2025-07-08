@@ -17,15 +17,104 @@ import {
   Moon, 
   Clock,
   Activity,
-  TrendingUp
+  TrendingUp,
+  Sparkles,
+  Star
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { ChatbotWidget } from "@/components/ChatbotWidget";
+import { AnimalsPage } from "./AnimalsPage";
+
+function UpgradeToProModal({ open, onOpenChange, farmId, onSuccess }: { open: boolean, onOpenChange: (open: boolean) => void, farmId: string, onSuccess: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handlePay = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // 1. Create order
+      const res = await api.post("/payments/create-order", { farmId, amount: 99 });
+      const order = res.data.order;
+      // 2. Open Razorpay Checkout
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: order.amount,
+        currency: order.currency,
+        name: "FarmTrack Pro",
+        description: "Upgrade to Pro",
+        order_id: order.id,
+        handler: async function (response: any) {
+          // 3. Verify payment
+          try {
+            const verifyRes = await api.post("/payments/verify", {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              farmId,
+              amount: 99,
+            });
+            if (verifyRes.data.success) {
+              onOpenChange(false);
+              onSuccess();
+            } else {
+              setError("Payment verification failed!");
+            }
+          } catch (err) {
+            setError("Payment verification failed!");
+          }
+        },
+        prefill: {},
+        theme: { color: "#f59e42" },
+      };
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (err) {
+      setError("Error initiating payment");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md p-0">
+        <Card className="bg-white/95 border-yellow-300">
+          <CardHeader className="flex flex-col items-center pb-2">
+            <Badge variant="default" className="mb-2 bg-yellow-400 text-yellow-900">Pro</Badge>
+            <CardTitle className="text-2xl text-yellow-800 flex items-center gap-2 font-bold">
+              <Star className="h-7 w-7 text-yellow-600" /> Upgrade to Pro
+            </CardTitle>
+            <CardDescription className="text-yellow-700 mt-2 font-medium text-center">
+              <span className="text-lg font-bold">Just ₹99/month</span>
+              <br />
+              <span className="text-yellow-800">Unlock all premium features for your farm:</span>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <ul className="list-none space-y-3 mb-6 mt-2">
+              <li className="flex items-center gap-2 text-yellow-900 font-medium"><Sparkles className="h-5 w-5 text-yellow-500" /> Multiple user roles (vet, worker)</li>
+              <li className="flex items-center gap-2 text-yellow-900 font-medium"><Sparkles className="h-5 w-5 text-yellow-500" /> Add more than 10 animals</li>
+              <li className="flex items-center gap-2 text-yellow-900 font-medium"><Sparkles className="h-5 w-5 text-yellow-500" /> RAG AI assistant</li>
+            </ul>
+            {error && <div className="text-red-600 mb-2 text-center">{error}</div>}
+            <Button onClick={handlePay} disabled={loading} className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-bold w-full shadow text-base py-3">
+              {loading ? "Processing..." : "Pay with Razorpay"}
+            </Button>
+          </CardContent>
+        </Card>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export function DashboardPage() {
   const [dashboard, setDashboard] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useUser();
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -42,6 +131,20 @@ export function DashboardPage() {
     };
     fetchDashboard();
   }, [user?.role]);
+
+  // After fetching dashboard, add a refresh function
+  const refreshDashboard = async () => {
+    try {
+      setIsLoading(true);
+      const response = await api.get("/dashboard/overview");
+      setDashboard(response.data);
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+      toast.error("Failed to load dashboard data");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -96,25 +199,13 @@ export function DashboardPage() {
       : 0,
   };
 
-  // Calculate yield statistics
-  const calculateTotalsByType = (stats: any) => {
-    if (!stats?.yields) return { cowMilk: 0, goatMilk: 0, henEggs: 0 };
-    return stats.yields.reduce(
-      (acc: any, yieldItem: any) => {
-        if (yieldItem.animal?.type === "Cow") {
-          acc.cowMilk += Number(yieldItem.quantity);
-        } else if (yieldItem.animal?.type === "Goat") {
-          acc.goatMilk += Number(yieldItem.quantity);
-        } else if (yieldItem.animal?.type === "Hen") {
-          acc.henEggs += Number(yieldItem.quantity);
-        }
-        return acc;
-      },
-      { cowMilk: 0, goatMilk: 0, henEggs: 0 }
-    );
-  };
-
-  const todayYields = calculateTotalsByType(yields);
+  // Use new backend fields for daily, weekly, monthly yields
+  const dailyMilk = yields?.daily?.milk || 0;
+  const dailyEgg = yields?.daily?.egg || 0;
+  const weeklyMilk = yields?.weekly?.milk || 0;
+  const weeklyEgg = yields?.weekly?.egg || 0;
+  const monthlyMilk = yields?.monthly?.milk || 0;
+  const monthlyEgg = yields?.monthly?.egg || 0;
 
   // Get recent notifications
   const recentNotifications = notifications.slice(0, 3);
@@ -137,6 +228,13 @@ export function DashboardPage() {
               <h1 className="text-4xl font-bold tracking-tight text-gray-900">Overview</h1>
               {user?.farm_id ? (
                 <div className="flex items-center justify-center gap-2 text-lg text-gray-600">
+                  {dashboard.farmInfo && (
+                    dashboard.farmInfo.isPremium ? (
+                      <Badge variant="default" className="bg-yellow-400 text-yellow-900 flex items-center gap-1 mr-2">Pro <Star className="h-4 w-4 ml-1" /></Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-gray-100 text-gray-600 border-gray-300 mr-2">Basic</Badge>
+                    )
+                  )}
                   <Building2 className="h-5 w-5" />
                   <span className="font-semibold text-green-700">{dashboard.farmInfo?.name}</span>
                   {dashboard.farmInfo?.location && (
@@ -158,6 +256,29 @@ export function DashboardPage() {
             </div>
           </div>
           <div className="p-6 space-y-10">
+            {/* Upgrade to Pro Promo */}
+            {dashboard.farmInfo && !dashboard.farmInfo.isPremium && (
+              <Card className="mb-6 border-yellow-300 bg-white/95">
+                <CardHeader className="flex flex-row items-center gap-4 p-6">
+                  <div className="flex flex-col items-start flex-1">
+                    <Badge variant="default" className="mb-2 bg-yellow-400 text-yellow-900">Pro</Badge>
+                    <CardTitle className="text-2xl text-yellow-800 flex items-center gap-2 font-bold">
+                      <TrendingUp className="h-7 w-7 text-yellow-600" />
+                      Upgrade to Pro
+                    </CardTitle>
+                    <CardDescription className="text-yellow-700 mt-2 font-medium">
+                      <span className="text-lg font-bold">Just ₹99/month</span>
+                      <br />
+                      <span className="text-yellow-800">Unlock premium features for your farm.</span>
+                    </CardDescription>
+                  </div>
+                  <Button variant="default" className="bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-bold shadow text-base px-6 py-3" onClick={() => setUpgradeModalOpen(true)}>
+                    Upgrade Now
+                  </Button>
+                </CardHeader>
+              </Card>
+            )}
+            <UpgradeToProModal open={upgradeModalOpen} onOpenChange={setUpgradeModalOpen} farmId={dashboard.farmInfo?.subscription ? dashboard.farmInfo.subscription : user?.farm_id} onSuccess={refreshDashboard} />
             {/* Quick Stats Section */}
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">Quick Stats</h2>
@@ -199,31 +320,19 @@ export function DashboardPage() {
                   <>
                     <Card>
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Today's Milk Production</CardTitle>
+                        <CardTitle className="text-sm font-medium">Milk Production (Today)</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="space-y-2">
-                          <div>
-                            <div className="text-xs text-muted-foreground">Cow Milk</div>
-                            <div className="text-xl font-bold">{todayYields.cowMilk.toFixed(2)} L</div>
-                          </div>
-                          <div>
-                            <div className="text-xs text-muted-foreground">Goat Milk</div>
-                            <div className="text-xl font-bold">{todayYields.goatMilk.toFixed(2)} L</div>
-                          </div>
-                        </div>
+                        <div className="text-xl font-bold">{dailyMilk.toFixed(2)} L</div>
                       </CardContent>
                     </Card>
 
                     <Card>
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Today's Egg Production</CardTitle>
+                        <CardTitle className="text-sm font-medium">Egg Production (Today)</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-2xl font-bold">{todayYields.henEggs.toFixed(0)} eggs</div>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          From {yields?.daily?.animalsByType?.Hen || 0} hens
-                        </p>
+                        <div className="text-xl font-bold">{dailyEgg.toFixed(0)} eggs</div>
                       </CardContent>
                     </Card>
 
@@ -347,7 +456,7 @@ export function DashboardPage() {
             )}
 
             {/* Farm Management Section for Admins */}
-            {user?.role === 'admin' && user?.farm_id && (
+            {user && user.role === 'admin' && user.farm_id && dashboard.farmInfo?.isPremium && (
               <div className="space-y-4">
                 <h2 className="text-xl font-semibold">Farm Management</h2>
                 <div className="grid gap-4 md:grid-cols-2">
@@ -421,22 +530,12 @@ export function DashboardPage() {
                     <CardContent>
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Cow Milk</span>
-                          <span className="font-medium">
-                            {calculateTotalsByType(yields?.weekly).cowMilk.toFixed(2)} L
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Goat Milk</span>
-                          <span className="font-medium">
-                            {calculateTotalsByType(yields?.weekly).goatMilk.toFixed(2)} L
-                          </span>
+                          <span className="text-sm text-muted-foreground">Milk</span>
+                          <span className="font-medium">{weeklyMilk.toFixed(2)} L</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-muted-foreground">Eggs</span>
-                          <span className="font-medium">
-                            {calculateTotalsByType(yields?.weekly).henEggs.toFixed(0)}
-                          </span>
+                          <span className="font-medium">{weeklyEgg.toFixed(0)}</span>
                         </div>
                       </div>
                     </CardContent>
@@ -450,22 +549,12 @@ export function DashboardPage() {
                     <CardContent>
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Cow Milk</span>
-                          <span className="font-medium">
-                            {calculateTotalsByType(yields?.monthly).cowMilk.toFixed(2)} L
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Goat Milk</span>
-                          <span className="font-medium">
-                            {calculateTotalsByType(yields?.monthly).goatMilk.toFixed(2)} L
-                          </span>
+                          <span className="text-sm text-muted-foreground">Milk</span>
+                          <span className="font-medium">{monthlyMilk.toFixed(2)} L</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-sm text-muted-foreground">Eggs</span>
-                          <span className="font-medium">
-                            {calculateTotalsByType(yields?.monthly).henEggs.toFixed(0)}
-                          </span>
+                          <span className="font-medium">{monthlyEgg.toFixed(0)}</span>
                         </div>
                       </div>
                     </CardContent>
@@ -571,6 +660,8 @@ export function DashboardPage() {
           </div>
         </div>
       </div>
+      {/* Only show assistant widget for Pro farms */}
+      {dashboard.farmInfo?.isPremium && <ChatbotWidget />}
     </div>
   );
 }

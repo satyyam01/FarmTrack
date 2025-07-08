@@ -25,6 +25,7 @@ import { animalApi } from "@/services/api";
 import { returnLogApi, ReturnLog } from "@/services/api";
 import { notificationApi, Notification } from "@/services/notificationApi";
 import { settingsApi } from "@/services/settingsApi";
+import { AnimalSelectDropdown } from "@/components/AnimalSelectDropdown";
 
 export function NightReturnTrackerPage() {
   const [date, setDate] = useState<string>(getTodayLocal());
@@ -202,7 +203,7 @@ export function NightReturnTrackerPage() {
   // Handle marking an animal as returned
   const handleMarkAsReturned = async () => {
     if (!tagId.trim()) {
-      toast.error("Please enter a tag number");
+      toast.error("Please select an animal to mark as returned");
       return;
     }
 
@@ -453,60 +454,54 @@ export function NightReturnTrackerPage() {
         </Card>
       </div>
 
-      {/* Date Navigation */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex gap-2 items-center">
-              <Input
-                id="date-filter"
-                type="date"
-                value={date}
-                onChange={e => setDate(e.target.value)}
-                className="w-[160px]"
-              />
-              <Button variant="outline" size="icon" onClick={goToPrevDay} aria-label="Previous day">
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <Button variant="outline" size="icon" onClick={goToNextDay} aria-label="Next day">
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setDate(getTodayLocal())}>
-                Today
-              </Button>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Calendar className="h-4 w-4" />
-              <span className="font-medium">{formattedDate}</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Quick Return Entry - Only show for admin and farm_worker */}
+      {/* Date Navigation and Quick Return Entry Side by Side */}
       {(userRole === 'admin' || userRole === 'farm_worker') && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Return Entry</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex space-x-2">
-              <Input
-                placeholder="Enter animal tag number to mark as returned"
-                value={tagId}
-                onChange={(e) => setTagId(e.target.value)}
-                onKeyPress={handleKeyPress}
-              />
-              <Button onClick={handleMarkAsReturned}>
-                Mark Returned
-              </Button>
+        <Card className="bg-muted/40 border border-muted-200">
+          <CardContent className="p-4">
+            <div className="flex flex-col md:flex-row md:justify-between gap-4 md:gap-0 w-full">
+              {/* Date Selection */}
+              <div className="flex-1 flex flex-col gap-2 md:pr-6 md:border-r md:border-muted-300 md:justify-center">
+                <label htmlFor="date-filter" className="text-sm font-medium">Select Date</label>
+                <div className="flex gap-2 items-center">
+                  <Input
+                    id="date-filter"
+                    type="date"
+                    value={date}
+                    onChange={e => setDate(e.target.value)}
+                    className="w-44"
+                  />
+                  <Button variant="outline" size="icon" onClick={goToPrevDay} aria-label="Previous day">
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <Button variant="outline" size="icon" onClick={goToNextDay} aria-label="Next day">
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setDate(getTodayLocal())}>
+                    Today
+                  </Button>
+                </div>
+              </div>
+              {/* Quick Return Entry */}
+              <div className="flex-1 flex flex-col gap-2 md:pl-6 md:justify-center">
+                <label className="text-sm font-medium">Quick Return Entry</label>
+                <div className="flex gap-2 items-center">
+                  <AnimalSelectDropdown
+                    animals={getMissingAnimals()}
+                    value={tagId}
+                    onChange={setTagId}
+                    placeholder="Select animal by name or tag"
+                  />
+                  <Button onClick={handleMarkAsReturned}>
+                    Mark Returned
+                  </Button>
+                </div>
+                {userRole === 'farm_worker' && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    You can only mark animals as returned. Only farm owners can mark animals as not returned.
+                  </p>
+                )}
+              </div>
             </div>
-            {userRole === 'farm_worker' && (
-              <p className="text-xs text-muted-foreground mt-2">
-                You can only mark animals as returned. Only farm owners can mark animals as not returned.
-              </p>
-            )}
           </CardContent>
         </Card>
       )}
@@ -527,7 +522,33 @@ export function NightReturnTrackerPage() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <p className="font-medium text-yellow-800">{notification.title}</p>
-                      <p className="text-sm text-yellow-700 mt-1">{notification.message}</p>
+                      {/* Render night return alert as a bullet list if applicable */}
+                      {notification.message && notification.message.startsWith('🌙 The following animals did not return to the barn tonight') ? (
+                        (() => {
+                          // Extract the animal list after the colon/newline
+                          const match = notification.message.match(/\(([^)]+)\):\n([\s\S]*)/);
+                          if (match) {
+                            const date = match[1];
+                            const animalsStr = match[2];
+                            const animals = animalsStr.split(',').map(s => s.trim()).filter(Boolean);
+                            return (
+                              <div className="mt-1">
+                                <div className="text-sm text-yellow-700 mb-1">The following animals did not return to the barn tonight ({date}):</div>
+                                <ul className="list-disc list-inside text-sm text-yellow-700">
+                                  {animals.map((animal, idx) => (
+                                    <li key={idx}>{animal}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            );
+                          } else {
+                            // fallback to plain text
+                            return <p className="text-sm text-yellow-700 mt-1">{notification.message}</p>;
+                          }
+                        })()
+                      ) : (
+                        <p className="text-sm text-yellow-700 mt-1">{notification.message}</p>
+                      )}
                       <p className="text-xs text-yellow-600 mt-2">
                         {format(parseISO(notification.createdAt), "MMM d, yyyy 'at' h:mm a")}
                       </p>

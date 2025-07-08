@@ -6,6 +6,7 @@ const { Pinecone } = require('@pinecone-database/pinecone');
 
 const Yield = require('../models/yield');
 const Animal = require('../models/animal');
+const Farm = require('../models/farm');
 const { chunkYieldRecord } = require('../utils/chunker');
 
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -41,6 +42,13 @@ async function getCohereEmbedding(text) {
 async function uploadYieldsToPinecone(farmId) {
   try {
     await mongoose.connect(MONGODB_URI);
+
+    // Only allow upsert for Pro farms
+    const farm = await Farm.findById(farmId);
+    if (!farm || !farm.isPremium || !farm.premiumExpiry || new Date(farm.premiumExpiry) < Date.now()) {
+      console.log(`⛔ Skipping Pinecone upsert: Farm ${farmId} is not Pro.`);
+      return;
+    }
 
     const yields = await Yield.find({ farm_id: farmId }).populate('animal_id');
     if (!yields.length) {

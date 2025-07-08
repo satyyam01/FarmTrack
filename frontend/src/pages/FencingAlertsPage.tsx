@@ -8,6 +8,7 @@ import { notificationApi } from "@/services/notificationApi";
 import { Animal } from "@/types/animal";
 import { animalApi, alertApi } from "@/services/api";
 import { toast } from "sonner";
+import { AnimalSelectDropdown } from "@/components/AnimalSelectDropdown";
 
 export function FencingAlertsPage() {
   const [alerts, setAlerts] = useState<any[]>([]);
@@ -107,108 +108,119 @@ export function FencingAlertsPage() {
         </Button>
       </div>
 
-      {/* Manual trigger (admin only) */}
-      {userRole === 'admin' && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <PawPrint className="h-5 w-5 text-primary" />
-              Trigger Fencing Alert (Test)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-2 items-center">
-              <Input
-                placeholder="Enter animal tag number..."
-                value={tagNumber}
-                onChange={e => setTagNumber(e.target.value)}
-                list="animal-tags"
-                disabled={isSubmitting}
-              />
-              <datalist id="animal-tags">
-                {animals.map(a => (
-                  <option key={a._id} value={a.tag_number}>{a.name}</option>
-                ))}
-              </datalist>
-              <Button onClick={handleTriggerAlert} disabled={isSubmitting}>
-                {isSubmitting ? "Triggering..." : "Trigger Alert"}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              This will create a fencing alert for the selected animal in your farm.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Info card for non-admin users */}
-      {userRole === 'user' && (
-        <Card className="mb-6 border-blue-200">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ShieldAlert className="h-5 w-5 text-blue-600" />
-              Fencing Alerts (View Only)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              You can view fencing alerts but only farm owners can trigger new alerts.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Fencing Alerts List */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-yellow-700" />
-            Recent Fencing Alerts
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="text-center text-muted-foreground py-8">Loading fencing alerts...</div>
-          ) : alerts.length === 0 ? (
-            <div className="text-center text-muted-foreground py-8">No fencing alerts found.</div>
-          ) : (
-            <div className="space-y-3">
-              {alerts.slice(0, 10).map(alert => (
-                <div key={alert._id} className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-yellow-800">{alert.message}</p>
-                    <p className="text-xs text-yellow-600 mt-1">{new Date(alert.createdAt).toLocaleString()}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {!alert.isRead && (
-                      <Badge variant="secondary" className="bg-red-100 text-red-800">New</Badge>
-                    )}
-                    {userRole === 'admin' && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={async () => {
-                          try {
-                            await notificationApi.delete(alert._id);
-                            toast.success("Alert deleted successfully");
-                            fetchAlerts();
-                          } catch (error) {
-                            console.error("Error deleting alert:", error);
-                            toast.error("Failed to delete alert");
-                          }
-                        }}
-                        className="text-red-600 border-red-300 hover:bg-red-50 hover:text-red-700"
-                      >
-                        Delete
-                      </Button>
-                    )}
-                  </div>
+      {/* Trigger Fencing Alert and Fencing Alerts List Side by Side */}
+      {userRole === 'admin' ? (
+        <div className="flex flex-col md:flex-row gap-6">
+          {/* Trigger Fencing Alert Card */}
+          <Card className="bg-muted/40 border border-muted-200 w-full md:w-[500px] flex-shrink-0">
+            <CardContent className="p-4 flex flex-col justify-center h-full">
+              <div className="flex items-center gap-2 mb-2">
+                <PawPrint className="h-5 w-5 text-primary" />
+                <span className="font-semibold">Trigger Fencing Alert (Test)</span>
+              </div>
+              <div className="flex gap-2 items-center">
+                <div className="w-64">
+                  <AnimalSelectDropdown
+                    animals={animals}
+                    value={tagNumber}
+                    onChange={setTagNumber}
+                    placeholder="Select animal by name or tag"
+                    disabled={isSubmitting}
+                  />
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                <Button onClick={handleTriggerAlert} disabled={isSubmitting}>
+                  {isSubmitting ? "Triggering..." : "Trigger Alert"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                This will create a fencing alert for the selected animal in your farm.
+              </p>
+            </CardContent>
+          </Card>
+          {/* Fencing Alerts List Card */}
+          <Card className="flex-1 bg-muted/40 border border-muted-200">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Bell className="h-5 w-5 text-yellow-700" />
+                <span className="font-semibold">Recent Fencing Alerts</span>
+              </div>
+              {isLoading ? (
+                <div className="text-center text-muted-foreground py-8">Loading fencing alerts...</div>
+              ) : alerts.length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">No fencing alerts found.</div>
+              ) : (
+                <div className="space-y-3">
+                  {alerts.slice(0, 10).map(alert => (
+                    <div key={alert._id} className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-yellow-800">{alert.message}</p>
+                        <p className="text-xs text-yellow-600 mt-1">{new Date(alert.createdAt).toLocaleString()}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {!alert.isRead && (
+                          <Badge variant="secondary" className="bg-red-100 text-red-800">New</Badge>
+                        )}
+                        {userRole === 'admin' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              try {
+                                await notificationApi.delete(alert._id);
+                                toast.success("Alert deleted successfully");
+                                fetchAlerts();
+                              } catch (error) {
+                                console.error("Error deleting alert:", error);
+                                toast.error("Failed to delete alert");
+                              }
+                            }}
+                            className="text-red-600 border-red-300 hover:bg-red-50 hover:text-red-700"
+                          >
+                            Delete
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        // Non-admin users see only the alerts list as before
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5 text-yellow-700" />
+              Recent Fencing Alerts
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="text-center text-muted-foreground py-8">Loading fencing alerts...</div>
+            ) : alerts.length === 0 ? (
+              <div className="text-center text-muted-foreground py-8">No fencing alerts found.</div>
+            ) : (
+              <div className="space-y-3">
+                {alerts.slice(0, 10).map(alert => (
+                  <div key={alert._id} className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-yellow-800">{alert.message}</p>
+                      <p className="text-xs text-yellow-600 mt-1">{new Date(alert.createdAt).toLocaleString()}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!alert.isRead && (
+                        <Badge variant="secondary" className="bg-red-100 text-red-800">New</Badge>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 } 

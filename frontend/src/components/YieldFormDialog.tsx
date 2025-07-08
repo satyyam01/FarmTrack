@@ -174,7 +174,11 @@ export function YieldFormDialog({
                     className="mb-2"
                   />
                 </div>
-                <div className="max-h-60 overflow-y-auto">
+                <div
+                  className="max-h-60 overflow-y-auto pointer-events-auto"
+                  tabIndex={0}
+                  style={{ WebkitOverflowScrolling: "touch" }}
+                >
                   {Object.entries(filteredGroupedAnimals).length === 0 && (
                     <div className="px-4 py-6 text-center text-muted-foreground">No animals found</div>
                   )}

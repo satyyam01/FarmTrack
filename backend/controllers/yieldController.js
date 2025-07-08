@@ -1,5 +1,6 @@
 const Yield = require('../models/yield');
 const Animal = require('../models/animal');
+const Farm = require('../models/farm');
 const { startOfDay, endOfDay, startOfWeek, startOfMonth, parseISO } = require('date-fns');
 const { chunkYieldRecord } = require('../utils/chunker');
 const axios = require('axios');
@@ -80,6 +81,8 @@ exports.createYield = async (req, res) => {
     if (date === today) {
       await delCache(`page:production:overview:${farmId}:${today}`);
     }
+    // Invalidate dashboard overview cache
+    await delCache(`page:dashboard:overview:${farmId}`);
 
     // Auto-embed and upload to Pinecone for owners only
     if (req.user.role === 'admin') {
@@ -139,6 +142,8 @@ exports.updateYield = async (req, res) => {
     if ((date && date === today) || (!date && existingYield.date === today)) {
       await delCache(`page:production:overview:${farmId}:${today}`);
     }
+    // Invalidate dashboard overview cache
+    await delCache(`page:dashboard:overview:${farmId}`);
 
     // Auto-embed and upload to Pinecone for owners only
     if (req.user.role === 'admin') {
@@ -163,6 +168,8 @@ exports.deleteYield = async (req, res) => {
     if (deleted.date === today) {
       await delCache(`page:production:overview:${deleted.farm_id}:${today}`);
     }
+    // Invalidate dashboard overview cache
+    await delCache(`page:dashboard:overview:${deleted.farm_id}`);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -384,6 +391,12 @@ async function getCohereEmbedding(text) {
 
 async function upsertYieldToPinecone(yieldDoc) {
   if (!yieldDoc || !yieldDoc.animal_id) return;
+  // Only upsert for Pro farms
+  const farm = await Farm.findById(yieldDoc.farm_id);
+  if (!farm || !farm.isPremium || !farm.premiumExpiry || new Date(farm.premiumExpiry) < Date.now()) {
+    console.log(`⛔ Skipping Pinecone upsert: Farm ${yieldDoc.farm_id} is not Pro.`);
+    return;
+  }
   const chunk = chunkYieldRecord(yieldDoc);
   if (!chunk) return;
   const embedding = await getCohereEmbedding(chunk);

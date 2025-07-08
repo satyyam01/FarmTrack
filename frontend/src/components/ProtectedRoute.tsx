@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useUser } from '@/contexts/UserContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -15,52 +16,44 @@ export function ProtectedRoute({
   requireAdmin = false,
   requireFarmOwner = false 
 }: ProtectedRouteProps) {
-  // Get user info from localStorage
-  const userStr = localStorage.getItem('user');
-  const token = localStorage.getItem('token');
-  
-  if (!token || !userStr) {
+  const { user, loading } = useUser();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
     toast.error('Please login to access this page');
     return <Navigate to="/login" replace />;
   }
 
-  try {
-    const user = JSON.parse(userStr);
-    
-    // Check if user is active
-    if (!user) {
-      toast.error('Invalid user session');
-      return <Navigate to="/login" replace />;
-    }
-
-    // Check for specific role requirement
-    if (requiredRole) {
-      const allowedRoles = requiredRole.split(',').map(role => role.trim());
-      if (!allowedRoles.includes(user.role)) {
-        toast.error(`Access denied. ${allowedRoles.join(' or ')} role required.`);
-        return <Navigate to="/dashboard" replace />;
-      }
-    }
-
-    // Check for admin requirement
-    if (requireAdmin && user.role !== 'admin') {
-      toast.error('Access denied. Admin privileges required.');
+  // Check for specific role requirement
+  if (requiredRole) {
+    const allowedRoles = requiredRole.split(',').map(role => role.trim());
+    if (!allowedRoles.includes(user.role)) {
+      toast.error(`Access denied. ${allowedRoles.join(' or ')} role required.`);
       return <Navigate to="/dashboard" replace />;
     }
-
-    // Special case: Allow admin users without farms to access farm registration
-    // This is handled by the FarmRegistrationPage component itself
-
-    // Check for farm owner requirement (admin with farm_id)
-    if (requireFarmOwner && (user.role !== 'admin' || !user.farm_id)) {
-      toast.error('Access denied. Farm owner privileges required.');
-      return <Navigate to="/dashboard" replace />;
-    }
-
-    return <>{children}</>;
-  } catch (error) {
-    console.error('Error parsing user data:', error);
-    toast.error('Invalid user session');
-    return <Navigate to="/login" replace />;
   }
+
+  // Check for admin requirement
+  if (requireAdmin && user.role !== 'admin') {
+    toast.error('Access denied. Admin privileges required.');
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // Check for farm owner requirement (admin with farm_id)
+  if (requireFarmOwner && (user.role !== 'admin' || !user.farm_id)) {
+    toast.error('Access denied. Farm owner privileges required.');
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
 } 

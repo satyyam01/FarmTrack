@@ -22,6 +22,18 @@ exports.sendVerificationOTP = async (req, res) => {
       return res.status(400).json({ error: 'Email already registered' });
     }
 
+    // Pro-only multi-role check BEFORE sending OTP
+    if (role !== 'admin') {
+      const Farm = require('../models/farm');
+      const farm = await Farm.findById(farm_id);
+      if (!farm) {
+        return res.status(400).json({ error: 'Invalid farm ID' });
+      }
+      if (!farm.isPremium || !farm.premiumExpiry || new Date(farm.premiumExpiry) < Date.now()) {
+        return res.status(403).json({ error: 'Multi-role users are only allowed for premium farm, ask your farm owner to upgrade today!' });
+      }
+    }
+
     // Store user temporarily in Redis
     await setPendingUser(email, {
       name,
@@ -58,6 +70,17 @@ exports.verifyOTPAndRegister = async (req, res) => {
     }
 
     // Create user in DB
+    // Enforce Pro-only registration for non-owner roles
+    if (pendingUser.role !== 'admin') {
+      const Farm = require('../models/farm');
+      const farm = await Farm.findById(pendingUser.farm_id);
+      if (!farm) {
+        return res.status(400).json({ error: 'Invalid farm ID' });
+      }
+      if (!farm.isPremium || !farm.premiumExpiry || new Date(farm.premiumExpiry) < Date.now()) {
+        return res.status(403).json({ error: 'Only Pro farms can register non-owner roles.' });
+      }
+    }
     const user = new User({
       name: pendingUser.name,
       email: pendingUser.email,
