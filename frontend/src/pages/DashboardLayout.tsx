@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom"
+import { Outlet, Navigate } from "react-router-dom"
 import { Navbar } from "@/components/Navbar"
 import { useUser } from "@/contexts/UserContext"
 import { ChatbotWidget } from "@/components/ChatbotWidget";
@@ -30,6 +30,11 @@ export function DashboardLayout() {
   // Safety check - this shouldn't happen with AuthGuard, but just in case
   if (!user) {
     return null
+  }
+
+  // Redirect admin users without a farm to the farm registration page
+  if (user.role === 'admin' && !user.farm_id && location.pathname !== '/register') {
+    return <Navigate to="/register" replace />;
   }
 
   return (
