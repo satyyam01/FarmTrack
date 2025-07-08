@@ -43,7 +43,7 @@ mongoose.connection.once('open', () => {
 
 // Middleware
 app.use(cors({
-  origin: [
+  allowedOrigins: [
     'https://farmtrack.satyyam.site', // production
     'http://localhost:5173'           // local dev
   ],
