@@ -42,14 +42,16 @@ mongoose.connection.once('open', () => {
 });
 
 // Middleware
+const allowedOrigins = [
+  'https://farmtrack.satyyam.site',
+  'http://localhost:5173'
+];
+
 app.use(cors({
-  allowedOrigins: [
-    'https://farmtrack.satyyam.site', // production
-    'http://localhost:5173'           // local dev
-  ],
   origin: allowedOrigins,
   credentials: true
 }));
+
 
 app.use(express.json());
 
