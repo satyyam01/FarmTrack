@@ -205,6 +205,22 @@ VITE_API_URL=http://localhost:3000/api
 
 ---
 
+## 🛡️ Security, Rate Limiting & Uptime Monitoring
+
+### Rate Limiting (Abuse Prevention)
+- **express-rate-limit** middleware is used to protect all sensitive endpoints (login, registration, OTP, chatbot, alerts, payments) from brute-force, spam, and abuse.
+- Each endpoint has a custom rate limit and user-friendly error message (e.g., "Too many attempts, please try again later.").
+- Rate limiting is applied globally in the backend for maximum efficiency and security.
+- Recruiter note: This demonstrates proactive security and production-readiness.
+
+### Uptime Monitoring (Health Checks)
+- A dedicated `/health` endpoint is provided for uptime monitoring and cloud deployment best practices.
+- External services (like Render, UptimeRobot, or AWS) can ping `/health` to verify the backend is running and responsive.
+- This ensures high reliability and quick diagnostics for production deployments.
+- Recruiter note: Shows attention to operational excellence and cloud-readiness.
+
+---
+
 ## 🛡 User Roles, Permissions & Cascading Deletes
 
 ### Roles
