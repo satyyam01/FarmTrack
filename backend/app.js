@@ -77,6 +77,8 @@ app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/payments', paymentRoutes);
 
+// Health check endpoint for uptime monitoring
+app.get('/health', (req, res) => res.send('OK'));
 
 // 404 handler for all unmatched routes
 app.use((req, res, next) => {
@@ -113,10 +115,21 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
+// Global error handlers for Render reliability
+process.on('unhandledRejection', (reason) => {
+  console.error('🔴 Unhandled Rejection:', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('🛑 Uncaught Exception:', err);
+  // Optionally: process.exit(1);
+});
+
 // Only start the server if this file is run directly
 if (require.main === module) {
   const PORT = process.env.PORT || 3000;
-  app.listen(PORT);
+  app.listen(PORT, () => {
+    console.log(`✅ Server booted on port ${PORT}`);
+  });
 }
 
 module.exports = app;
