@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const mongoose = require('mongoose');
 require('dotenv').config();
+const rateLimit = require('express-rate-limit');
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
@@ -61,6 +62,33 @@ app.use(cors({
 
 app.use(express.json());
 
+// Rate limiters
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // limit each IP to 10 requests per windowMs
+  message: { error: 'Too many attempts, please try again later.' }
+});
+const otpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: 'Too many OTP requests, please try again later.' }
+});
+const chatbotLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: 'Too many chatbot requests, please slow down.' }
+});
+const alertLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many alert requests, please try again later.' }
+});
+const paymentLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many payment requests, please try again later.' }
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/animals', animalRoutes);
@@ -76,6 +104,19 @@ app.use('/api/verify', verificationRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/payments', paymentRoutes);
+
+// Apply rate limiters to sensitive endpoints
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/verification/send-otp', otpLimiter);
+app.use('/api/verification/confirm', otpLimiter);
+app.use('/api/settings/request-email-change-otp', otpLimiter);
+app.use('/api/auth/password/request-otp', otpLimiter);
+app.use('/api/chatbot/ask', chatbotLimiter);
+app.use('/api/alerts/fencing', alertLimiter);
+app.use('/api/alerts/barn-check', alertLimiter);
+app.use('/api/payments/create-order', paymentLimiter);
+app.use('/api/payments/verify', paymentLimiter);
 
 // Health check endpoint for uptime monitoring
 app.get('/health', (req, res) => res.send('OK'));
