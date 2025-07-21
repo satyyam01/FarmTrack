@@ -2,7 +2,6 @@
   "name": "farmtrack-root",
   "private": true,
   "scripts": {
-    "prebuild": "echo VITE_API_URL=$VITE_API_URL",
     "backend": "cd backend && npm run dev",
     "frontend": "cd frontend && npm run dev",
     "dev": "concurrently --raw -k \"npm run backend\" \"npm run frontend\""
