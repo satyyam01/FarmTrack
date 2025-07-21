@@ -62,6 +62,12 @@ app.use(cors({
 
 app.use(express.json());
 
+// Add a general request logger to see all incoming requests
+app.use((req, res, next) => {
+  console.log(`[Request Logger] Method: ${req.method}, URL: ${req.originalUrl}`);
+  next();
+});
+
 // Rate limiters
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -90,22 +96,37 @@ const paymentLimiter = rateLimit({
 });
 
 // Routes
+console.log('[App Setup] Mounting /api/auth routes...');
 app.use('/api/auth', authRoutes);
+console.log('[App Setup] Mounting /api/animals routes...');
 app.use('/api/animals', animalRoutes);
+console.log('[App Setup] Mounting /api/yields routes...');
 app.use('/api/yields', yieldRoutes);
+console.log('[App Setup] Mounting /api/medications routes...');
 app.use('/api/medications', medicationRoutes);
+console.log('[App Setup] Mounting /api/checkups routes...');
 app.use('/api/checkups', checkupRoutes);
+console.log('[App Setup] Mounting /api/returnlogs routes...');
 app.use('/api/returnlogs', returnLogRoutes);
+console.log('[App Setup] Mounting /api/farms routes...');
 app.use('/api/farms', farmRoutes);
+console.log('[App Setup] Mounting /api/notifications routes...');
 app.use('/api/notifications', notificationRoutes);
+console.log('[App Setup] Mounting /api/alerts routes...');
 app.use('/api/alerts', alertRoutes);
+console.log('[App Setup] Mounting /api/settings routes...');
 app.use('/api/settings', settingRoutes);
+console.log('[App Setup] Mounting /api/verify routes...');
 app.use('/api/verify', verificationRoutes);
+console.log('[App Setup] Mounting /api/chatbot routes...');
 app.use('/api/chatbot', chatbotRoutes);
+console.log('[App Setup] Mounting /api/dashboard routes...');
 app.use('/api/dashboard', dashboardRoutes);
+console.log('[App Setup] Mounting /api/payments routes...');
 app.use('/api/payments', paymentRoutes);
 
 // Apply rate limiters to sensitive endpoints
+console.log('[App Setup] Applying rate limiters...');
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 app.use('/api/verification/send-otp', otpLimiter);
