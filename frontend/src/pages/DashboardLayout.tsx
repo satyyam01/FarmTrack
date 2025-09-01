@@ -1,7 +1,7 @@
 import { Outlet, Navigate } from "react-router-dom"
 import { Navbar } from "@/components/Navbar"
 import { useUser } from "@/contexts/UserContext"
-import { ChatbotWidget } from "@/components/ChatbotWidget";
+
 import { useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import api from "@/services/api";
@@ -43,7 +43,7 @@ export function DashboardLayout() {
       <main className="container mx-auto p-6">
         <Outlet />
       </main>
-      {isPro && <ChatbotWidget />}
+      
     </div>
   )
 }

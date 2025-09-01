@@ -1,16 +1,16 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
-const Farm = require('../models/farm'); // Add this
+const Farm = require('../models/farm');
 const { sendOTP, verifyOTP } = require('../utils/sendgridOTP');
 
-// JWT generator (same)
+// JWT generator
 const generateToken = (user) => {
   return jwt.sign(
     {
       id: user._id,
       email: user.email,
       role: user.role,
-      farm_id: user.farm_id // ✅ This is crucial
+      farm_id: user.farm_id // imp
     },
     process.env.JWT_SECRET,
     { expiresIn: '24h' }
@@ -18,7 +18,7 @@ const generateToken = (user) => {
 };
 
 
-// 👇 Modified Register function
+// Register function
 exports.register = async (req, res) => {
   try {
     const { email, password, name, role, farm_id } = req.body;
@@ -69,7 +69,7 @@ exports.register = async (req, res) => {
         farm_id: user.farm_id || null
       }
     };
-    
+
     res.status(201).json(response);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -107,7 +107,7 @@ exports.login = async (req, res) => {
         email: user.email,
         name: user.name,
         role: user.role,
-        farm_id: user.farm_id || null  // ✅ Include this
+        farm_id: user.farm_id || null
       },
       token
     });
@@ -208,7 +208,7 @@ exports.deleteAccount = async (req, res) => {
 
     // Role-based cascading deletion logic
     if (user.role === 'admin' && user.farm_id) {
-      // 🚨 FARM OWNER DELETION - Most destructive operation
+      // !! FARM OWNER DELETION - Most destructive operation
       console.log(`🗑️  Deleting farm owner account: ${user.email} (Farm ID: ${user.farm_id})`);
       
       // 1. Delete all notifications for the farm
@@ -277,7 +277,7 @@ exports.deleteAccount = async (req, res) => {
       console.log(`✅ Successfully deleted system admin account: ${user.email}`);
       
     } else if (user.role === 'veterinarian') {
-      // 🩺 VETERINARIAN DELETION - Delete their health records and notifications
+      // VETERINARIAN DELETION - Delete their health records and notifications
       console.log(`🩺 Deleting veterinarian account: ${user.email} (Farm ID: ${user.farm_id})`);
       
       // Delete notifications created by this veterinarian

@@ -41,26 +41,29 @@
 - Log and analyze daily yields (milk, eggs, etc.)
 - Performance analytics for individual animals and herds
 - Yield forecasting and quality tracking
+- Comprehensive production reporting and insights
 
 ### 🏃 Animal Movement & RFID Tracking
 - Real-time location tracking with RFID tags
 - Night return monitoring and alerts for missing animals
 - Complete movement history and geofencing
+- Automated barn check alerts
 
 ### 👥 Multi-User & Role-Based Access
 - Owners, veterinarians, and workers with custom permissions
 - Multiple farms under single ownership
 - User profiles, activity logging, and secure authentication
+- Premium farm features with enhanced capabilities
 
 ### 📱 Modern UI/UX
 - Responsive, mobile-friendly design
 - Real-time updates and notifications
 - Intuitive dashboards, dark/light mode
+- Professional email templates and alerts
 
 ---
 
 ## 💎 Premium & Unique Features
-- **Chatbot Integration:** AI-powered assistant for farm queries and support
 - **Fencing Alerts:** Real-time boundary breach detection and notifications
 - **Night Check Automation:** Scheduled checks for animal returns, with alerts and logs
 - **Cascading Deletes:** Role-based, safe, and auditable data deletion (see [CASCADING_DELETE_ACTIONS.md](documentation/CASCADING_DELETE_ACTIONS.md))
@@ -96,7 +99,7 @@ farmtrack/
 │   ├── migrations/          # DB migration scripts
 │   ├── scheduler/           # Cron jobs (night check, etc.)
 │   ├── scripts/             # Utility and test scripts
-│   ├── utils/               # Email, OTP, caching, RAG, etc.
+│   ├── utils/               # Email, OTP, caching, etc.
 │   └── app.js, package.json, ...
 ├── frontend/
 │   ├── src/
@@ -196,7 +199,7 @@ VITE_API_URL=http://localhost:3000/api
 
 - Full API reference: [API_DOCUMENTATION.md](documentation/API_DOCUMENTATION.md)
 - All endpoints (except login/register) require a JWT in the `Authorization` header.
-- Key resources: animals, yields, checkups, medications, notifications, alerts, users, farms, settings, payments, chatbot, etc.
+- Key resources: animals, yields, checkups, medications, notifications, alerts, users, farms, settings, payments, etc.
 - Example endpoints:
   - `POST /api/animals` – Create animal
   - `GET /api/yields` – List yields
@@ -208,7 +211,7 @@ VITE_API_URL=http://localhost:3000/api
 ## 🛡️ Security, Rate Limiting & Uptime Monitoring
 
 ### Rate Limiting (Abuse Prevention)
-- **express-rate-limit** middleware is used to protect all sensitive endpoints (login, registration, OTP, chatbot, alerts, payments) from brute-force, spam, and abuse.
+- **express-rate-limit** middleware is used to protect all sensitive endpoints (login, registration, OTP, alerts, payments) from brute-force, spam, and abuse.
 - Each endpoint has a custom rate limit and user-friendly error message (e.g., "Too many attempts, please try again later.").
 - Rate limiting is applied globally in the backend for maximum efficiency and security.
 - Recruiter note: This demonstrates proactive security and production-readiness.
@@ -295,6 +298,7 @@ This project is licensed under the ISC License.
 - [Night Check Testing Guide](documentation/NIGHT_CHECK_TESTING.md)
 - [SendGrid OTP Setup](documentation/SENDGRID_OTP_SETUP.md)
 - [Project Journey (PDF)](documentation/farmtrack-journey.pdf)
+- [Functional Flows Documentation](FARMTRACK_FUNCTIONAL_FLOWS.md)
 
 ---
 

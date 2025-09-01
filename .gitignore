@@ -227,3 +227,8 @@ backend/getFarmId.js
 # (Optional) If you want to ignore all of testing/ or scripts/, comment out or remove the following lines if present:
 # testing/
 # backend/scripts/
+
+
+# Docs
+
+documentation/

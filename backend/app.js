@@ -28,7 +28,7 @@ const alertRoutes = require('./routes/alertRoutes');
 const settingRoutes = require('./routes/settingRoutes');
 const { scheduleNightCheck } = require('./scheduler/nightCheckScheduler');
 const verificationRoutes = require('./routes/verificationRoutes');
-const chatbotRoutes = require('./routes/chatbotRoutes');
+
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 
@@ -44,8 +44,10 @@ mongoose.connection.once('open', () => {
 
 // Middleware
 const allowedOrigins = [
+  'https://farmtrack-2dkp.onrender.com',
   'https://farmtrack.satyyam.site',
-  'http://localhost:5173'
+  'http://localhost:5173',
+  'farm-track-git-main-satyyam01s-projects.vercel.app'
 ];
 
 app.use(cors({
@@ -79,11 +81,7 @@ const otpLimiter = rateLimit({
   max: 5,
   message: { error: 'Too many OTP requests, please try again later.' }
 });
-const chatbotLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  message: { error: 'Too many chatbot requests, please slow down.' }
-});
+
 const alertLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -118,8 +116,7 @@ console.log('[App Setup] Mounting /api/settings routes...');
 app.use('/api/settings', settingRoutes);
 console.log('[App Setup] Mounting /api/verify routes...');
 app.use('/api/verify', verificationRoutes);
-console.log('[App Setup] Mounting /api/chatbot routes...');
-app.use('/api/chatbot', chatbotRoutes);
+
 console.log('[App Setup] Mounting /api/dashboard routes...');
 app.use('/api/dashboard', dashboardRoutes);
 console.log('[App Setup] Mounting /api/payments routes...');
@@ -133,7 +130,7 @@ app.use('/api/verification/send-otp', otpLimiter);
 app.use('/api/verification/confirm', otpLimiter);
 app.use('/api/settings/request-email-change-otp', otpLimiter);
 app.use('/api/auth/password/request-otp', otpLimiter);
-app.use('/api/chatbot/ask', chatbotLimiter);
+
 app.use('/api/alerts/fencing', alertLimiter);
 app.use('/api/alerts/barn-check', alertLimiter);
 app.use('/api/payments/create-order', paymentLimiter);
@@ -159,7 +156,10 @@ app.use((req, res, next) => {
         '/api/farms',
         '/api/notifications',
         '/api/alerts',
-        '/api/settings'
+        '/api/settings',
+        '/api/verify',
+        '/api/dashboard',
+        '/api/payments'
       ]
     });
   } else {

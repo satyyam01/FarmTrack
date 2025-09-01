@@ -2,12 +2,7 @@ const Yield = require('../models/yield');
 const Animal = require('../models/animal');
 const Farm = require('../models/farm');
 const { startOfDay, endOfDay, startOfWeek, startOfMonth, parseISO } = require('date-fns');
-const { chunkYieldRecord } = require('../utils/chunker');
-const axios = require('axios');
-const { Pinecone } = require('@pinecone-database/pinecone');
-const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
-const PINECONE_INDEX = process.env.PINECONE_INDEX;
-const COHERE_API_KEY = process.env.COHERE_API_KEY;
+
 const { getCache, setCache, delCache } = require('../utils/cache');
 
 // Get all yields
@@ -84,10 +79,7 @@ exports.createYield = async (req, res) => {
     // Invalidate dashboard overview cache
     await delCache(`page:dashboard:overview:${farmId}`);
 
-    // Auto-embed and upload to Pinecone for owners only
-    if (req.user.role === 'admin') {
-      upsertYieldToPinecone(populated);
-    }
+
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -145,10 +137,7 @@ exports.updateYield = async (req, res) => {
     // Invalidate dashboard overview cache
     await delCache(`page:dashboard:overview:${farmId}`);
 
-    // Auto-embed and upload to Pinecone for owners only
-    if (req.user.role === 'admin') {
-      upsertYieldToPinecone(populated);
-    }
+
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -366,59 +355,4 @@ exports.clearAll = async (req, res) => {
   }
 };
 
-async function getCohereEmbedding(text) {
-  try {
-    const response = await axios.post(
-      'https://api.cohere.ai/v1/embed',
-      {
-        texts: [text],
-        model: 'embed-english-v3.0',
-        input_type: 'search_document',
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${COHERE_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-    return response.data.embeddings[0];
-  } catch (error) {
-    console.error('❌ Cohere embedding error:', error?.response?.data || error.message);
-    return null;
-  }
-}
 
-async function upsertYieldToPinecone(yieldDoc) {
-  if (!yieldDoc || !yieldDoc.animal_id) return;
-  // Only upsert for Pro farms
-  const farm = await Farm.findById(yieldDoc.farm_id);
-  if (!farm || !farm.isPremium || !farm.premiumExpiry || new Date(farm.premiumExpiry) < Date.now()) {
-    console.log(`⛔ Skipping Pinecone upsert: Farm ${yieldDoc.farm_id} is not Pro.`);
-    return;
-  }
-  const chunk = chunkYieldRecord(yieldDoc);
-  if (!chunk) return;
-  const embedding = await getCohereEmbedding(chunk);
-  if (!embedding) return;
-  const index = pinecone.Index(PINECONE_INDEX);
-  const namespace = `farm_${yieldDoc.farm_id}`;
-  const vector = {
-    id: yieldDoc._id.toString(),
-    values: embedding,
-    metadata: {
-      text: chunk,
-      date: yieldDoc.date,
-      unit_type: yieldDoc.unit_type,
-      quantity: yieldDoc.quantity,
-      animal_name: yieldDoc.animal_id.name || '',
-      tag_number: yieldDoc.animal_id.tag_number || '',
-    },
-  };
-  try {
-    await index.namespace(namespace).upsert([vector]);
-    console.log(`✅ Yield ${yieldDoc._id} upserted to Pinecone [${namespace}]`);
-  } catch (err) {
-    console.error('❌ Pinecone upsert error:', err?.response?.data || err.message);
-  }
-}

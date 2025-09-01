@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
 
-// ✅ JWT Authentication Middleware
+// JWT Authentication Middleware
 exports.authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -18,7 +18,7 @@ exports.authenticate = async (req, res, next) => {
     if (!user) return res.status(401).json({ error: 'User not found' });
     if (!user.isActive) return res.status(401).json({ error: 'Account is deactivated' });
 
-    // ✅ Attach to req.user with database values (always up-to-date)
+    // Attach to req.user with database values (always up-to-date)
     req.user = {
       id: user._id,
       email: user.email,
@@ -27,12 +27,12 @@ exports.authenticate = async (req, res, next) => {
       farm_id: user.farm_id || null
     };
 
-    // 🚫 Enforce farm_id presence for non-admins only
+    // Enforce farm_id presence for non-admins only
     if (user.role !== 'admin' && !req.user.farm_id) {
       return res.status(403).json({ error: 'User does not belong to any farm' });
     }
 
-    // ✅ Allow admin users to proceed even without farm_id (for farm creation)
+    // Allow admin users to proceed even without farm_id (for farm creation)
     // Non-admin users must have farm_id to proceed
     next();
   } catch (error) {
@@ -46,7 +46,7 @@ exports.authenticate = async (req, res, next) => {
   }
 };
 
-// ✅ Role-based Authorization Middleware
+// Role-based Authorization Middleware
 exports.authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {
@@ -58,7 +58,7 @@ exports.authorize = (...roles) => {
   };
 };
 
-// ✅ Farm Owner Authorization Middleware
+// Farm Owner Authorization Middleware
 exports.requireFarmOwner = async (req, res, next) => {
   try {
     // Check if user is admin

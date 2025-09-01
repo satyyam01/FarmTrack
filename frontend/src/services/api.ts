@@ -254,11 +254,6 @@ export const alertApi = {
   }
 };
 
-export const chatbotApi = {
-  sendMessage: async (question: string): Promise<string> => {
-    const response = await api.post('/chatbot/ask', { question });
-    return response.data.answer;
-  }
-};
+
 
 export default api;

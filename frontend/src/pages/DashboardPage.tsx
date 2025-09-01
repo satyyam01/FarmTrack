@@ -24,7 +24,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ChatbotWidget } from "@/components/ChatbotWidget";
+
 import { AnimalsPage } from "./AnimalsPage";
 
 function UpgradeToProModal({ open, onOpenChange, farmId, onSuccess }: { open: boolean, onOpenChange: (open: boolean) => void, farmId: string, onSuccess: () => void }) {
@@ -661,7 +661,7 @@ export function DashboardPage() {
         </div>
       </div>
       {/* Only show assistant widget for Pro farms */}
-      {dashboard.farmInfo?.isPremium && <ChatbotWidget />}
+      
     </div>
   );
 }
